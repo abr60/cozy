@@ -1,37 +1,143 @@
-# =============================================================================
-# pkgs-core.txt — Core packages for the Cozy Hyprland setup
-# Installed via: cozy-install
-# Select matching Archinstall options for Hyprland, PipeWire, Intel graphics,
-# NetworkManager with iwd backend, linux-lts, Limine, Btrfs, and zram.
-# =============================================================================
+# Archinstall: NO profile. Select: linux-lts, Limine, Btrfs, zram,
+# NetworkManager (iwd backend), PipeWire. Intel graphics and
+# power-profiles-daemon come from this list, so skip them there.
 
 # --- Session ---
+hyprland
 hypridle
 hyprlock
 hyprpolkitagent
+hyprsunset
+uwsm
+xdg-desktop-portal-hyprland
 waybar
 mako
 swaybg
 foot
 rofi
 brightnessctl
-hyprsunset
 
 # --- Screenshots, Clipboard & Recording ---
+grim
+slurp
 swappy
 wl-clipboard
 cliphist
 gpu-screen-recorder
 
 # --- Toolkits, Portal & Login ---
+qt5-wayland
+qt6-wayland
 xdg-desktop-portal-gtk
 greetd
 greetd-tuigreet
 
-# --- Audio, Bluetooth, Graphics & Firmware ---
+# --- Graphics, Audio, Bluetooth, Power & Firmware ---
+mesa
+vulkan-intel
+intel-media-driver
+sof-firmware
+pipewire-jack
 pavucontrol
 bluez
 bluez-utils
+blueman
+power-profiles-daemon
+fwupd
+
+# --- Applications ---
+firefox
+zathura
+zathura-pdf-mupdf
+mpv
+loupe
+keepassxc
+libreoffice-still
+tesseract-data-eng
+ttf-liberation
+ttf-carlito
+ttf-caladea
+zenity
+
+# --- Files: yazi (main) ---
+yazi
+7zip
+resvg
+imagemagick
+chafa
+ffmpeg
+poppler
+
+# --- Files: Thunar (backup, complete) ---
+thunar
+thunar-archive-plugin
+thunar-volman
+tumbler
+ffmpegthumbnailer
+file-roller
+gvfs
+gvfs-mtp
+udisks2
+ntfs-3g
+
+# --- Theme, Fonts & Network ---
+adw-gtk-theme
+papirus-icon-theme
+matugen
+reflector
+noto-fonts
+noto-fonts-emoji
+ttf-jetbrains-mono-nerd
+otf-font-awesome
+network-manager-applet
+
+# --- Neovim / LazyVim ---
+neovim
+git
+base-devel
+tree-sitter-cli
+ripgrep
+fd
+fzf
+lazygit
+curl
+unzip
+nodejs
+npm
+
+# --- Basics ---
+xdg-user-dirs
+man-db
+btop
+pacman-contrib
+
+# --- Boot & Snapshots ---
+snapper
+snap-pac
+
+# --- Shell ---
+zsh
+zoxide
+bat
+eza
+jq
+
+# --- Android, VPN/DNS/Firewall, Fingerprint, Bengali & Music ---
+android-tools
+android-udev
+ufw
+wireguard-tools
+systemd-resolvconf
+fprintd
+fcitx5
+fcitx5-gtk
+fcitx5-qt
+fcitx5-configtool
+fcitx5-m17n
+mpd
+mpd-mpris
+rmpc
+cava
 blueman
 tlp
 fwupd
