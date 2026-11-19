@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# cozy:summary=Launch the Cozy audio controls TUI (provided by wiremix).
+
+launch-or-focus-tui wiremix

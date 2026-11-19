@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# =============================================================================
+# cozy-apply-theme — Apply a named theme directly (no rofi picker)
+# Usage: cozy-apply-theme <ThemeName>
+# =============================================================================
+
+SELECTED_THEME="$1"
+THEMES_DIR="$HOME/.local/share/Cozy/Themes"
+STATE_DIR="$HOME/.local/state/Cozy"
+SCRIPTS_DIR="$HOME/.config/matugen/bin"
+
+[[ -z "$SELECTED_THEME" ]] && { echo "Usage: cozy-apply-theme <ThemeName>"; exit 1; }
+[[ ! -d "$THEMES_DIR/$SELECTED_THEME" ]] && { notify-send "Cozy" "Theme '$SELECTED_THEME' not found"; exit 1; }
+
+MODE=$(cat "$STATE_DIR/current-mode" 2>/dev/null || echo "dark")
+
+# Save theme state
+mkdir -p "$STATE_DIR"
+echo "$SELECTED_THEME" > "$STATE_DIR/current-theme"
+
+# Pick random wallpaper from selected theme
+BG_DIR="$THEMES_DIR/$SELECTED_THEME/Walls"
+mapfile -t WALLS < <(
+    find -L "$BG_DIR" -maxdepth 1 -type f \
+    \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \
+       -o -iname "*.webp" -o -iname "*.gif" \) | sort
+)
+
+[[ ${#WALLS[@]} -eq 0 ]] && { notify-send "Cozy" "No wallpapers in '$SELECTED_THEME'"; exit 1; }
+
+RANDOM_WALL="${WALLS[$RANDOM % ${#WALLS[@]}]}"
+ln -nsf "$RANDOM_WALL" "$STATE_DIR/current-wallpaper"
+
+"$SCRIPTS_DIR/wallpaper-apply" "$STATE_DIR/current-wallpaper" || exit $?
+
+"$SCRIPTS_DIR/cozy-set-mode" "$MODE"

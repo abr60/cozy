@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# cozy:summary=Reload mako configuration (used by the Cozy theme switching).
+
+makoctl reload

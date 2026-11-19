@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# cozy:summary=Display the Cozy logo in the terminal using green color.
+
+clear
+echo -e "\033[32m"
+cat <~/.local/share/Cozy/logo.txt
+echo -e "\033[0m"
+echo

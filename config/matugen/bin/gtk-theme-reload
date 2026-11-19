@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# =============================================================================
+# gtk-theme-reload.sh — matugen post_hook for gtk3 + gtk4 templates
+#
+# Called TWICE per matugen run:
+#   gtk3 template → no args        (just trigger adw-gtk3 reload)
+#   gtk4 template → "$1"=image "$2"=mode  (also update icon theme + nautilus)
+# =============================================================================
+
+set -uo pipefail
+
+STATE_DIR="$HOME/.local/state/Cozy"
+CURRENT_WP_LINK="$STATE_DIR/current-wallpaper"
+
+wallpaper_path="${1:-}"
+MODE="${2:-}"
+
+# Detect current mode dynamically if not passed as an argument
+[[ -z "$MODE" ]] && MODE="$(cat "$STATE_DIR/current-mode" 2>/dev/null || echo dark)"
+[[ -z "$wallpaper_path" ]] && wallpaper_path="$(readlink -f "$CURRENT_WP_LINK" 2>/dev/null || echo "")"
+
+# ─── adw-gtk3 reload trick (toggle off/on forces GTK3 apps to re-read colors) ──
+gsettings set org.gnome.desktop.interface gtk-theme "adw-gtk3-${MODE}" 2>/dev/null
+gsettings set org.gnome.desktop.interface gtk-theme "" 2>/dev/null
+gsettings set org.gnome.desktop.interface gtk-theme "adw-gtk3-${MODE}" 2>/dev/null
+
+# ─── gtk3 invocation has no args — stop here, gtk4 call handles the rest ───────
+if [[ -z "${1:-}" ]]; then
+    exit 0
+fi
+
+# ─── Papirus folder color from dominant wallpaper color ────────────────────────
+PAPIRUS_FOLDER_COLOR="blue"  # fallback
+
+IM_CMD=$(command -v magick || command -v convert || true)
+
+if [[ -n "$IM_CMD" && -f "$wallpaper_path" ]]; then
+    if [[ "$MODE" == "light" ]]; then
+        MIN_LUM=80; MAX_LUM=200; MIN_CHROMA=50
+    else
+        MIN_LUM=25; MAX_LUM=230; MIN_CHROMA=30
+    fi
+
+    DOMINANT=""
+    while read -r hex; do
+        [[ -z "$hex" ]] && continue
+        r=$((16#${hex:1:2})); g=$((16#${hex:3:2})); b=$((16#${hex:5:2}))
+        lum=$(( (r * 299 + g * 587 + b * 114) / 1000 ))
+        max_c=$(( r > g ? r : g )); max_c=$(( max_c > b ? max_c : b ))
+        min_c=$(( r < g ? r : g )); min_c=$(( min_c < b ? min_c : b ))
+        chroma=$(( max_c - min_c ))
+        if (( lum >= MIN_LUM && lum <= MAX_LUM && chroma >= MIN_CHROMA )); then
+            DOMINANT="$hex"
+            break
+        fi
+    done < <(
+        "$IM_CMD" "$wallpaper_path" -resize 100x100! -quantize transparent \
+            +dither -colors 8 -format "%c" histogram:info:- 2>/dev/null \
+        | sort -rn | grep -oP '#[0-9A-Fa-f]{6}'
+    )
+
+    if [[ -n "$DOMINANT" ]]; then
+        r=$((16#${DOMINANT:1:2})); g=$((16#${DOMINANT:3:2})); b=$((16#${DOMINANT:5:2}))
+        max_c=$(( r > g ? r : g )); max_c=$(( max_c > b ? max_c : b ))
+        min_c=$(( r < g ? r : g )); min_c=$(( min_c < b ? min_c : b ))
+        chroma=$(( max_c - min_c ))
+
+        if (( chroma == 0 )); then
+            hue=0
+        elif (( max_c == r )); then
+            hue=$(( (60 * (g - b) / chroma + 360) % 360 ))
+        elif (( max_c == g )); then
+            hue=$(( 60 * (b - r) / chroma + 120 ))
+        else
+            hue=$(( 60 * (r - g) / chroma + 240 ))
+        fi
+
+        if   (( hue >= 345 || hue < 15  )); then PAPIRUS_FOLDER_COLOR="red"
+        elif (( hue >= 15  && hue < 45  )); then PAPIRUS_FOLDER_COLOR="orange"
+        elif (( hue >= 45  && hue < 75  )); then PAPIRUS_FOLDER_COLOR="yellow"
+        elif (( hue >= 75  && hue < 105 )); then PAPIRUS_FOLDER_COLOR="green"
+        elif (( hue >= 105 && hue < 150 )); then PAPIRUS_FOLDER_COLOR="teal"
+        elif (( hue >= 150 && hue < 195 )); then PAPIRUS_FOLDER_COLOR="cyan"
+        elif (( hue >= 195 && hue < 255 )); then PAPIRUS_FOLDER_COLOR="blue"
+        elif (( hue >= 255 && hue < 285 )); then PAPIRUS_FOLDER_COLOR="indigo"
+        elif (( hue >= 285 && hue < 300 )); then PAPIRUS_FOLDER_COLOR="violet"
+        elif (( hue >= 300 && hue < 345 )); then PAPIRUS_FOLDER_COLOR="magenta"
+        fi
+    fi
+fi
+
+# ─── Apply Papirus folder color ───────────────────────────────────────────────
+papirus-folders -C "$PAPIRUS_FOLDER_COLOR" --theme Papirus 2>/dev/null
+
+# ─── Set Papirus icon theme ───────────────────────────────────────────────────
+[[ "$MODE" == "dark" ]] && ICON_THEME="Papirus-Dark" || ICON_THEME="Papirus"
+gsettings set org.gnome.desktop.interface icon-theme "$ICON_THEME" 2>/dev/null
+
+# ─── Final D-Bus Kick-start for GTK4/Libadwaita apps (Nautilus) ──────────────
+if [[ "$MODE" == "dark" ]]; then
+    OPPOSITE="light"
+else
+    OPPOSITE="dark"
+fi
+
+gsettings set org.gnome.desktop.interface color-scheme "prefer-${OPPOSITE}" 2>/dev/null
+gsettings set org.gnome.desktop.interface gtk-theme "adw-gtk3-${OPPOSITE}" 2>/dev/null
+
+sleep 0.01
+
+gsettings set org.gnome.desktop.interface color-scheme "prefer-${MODE}" 2>/dev/null
+gsettings set org.gnome.desktop.interface gtk-theme "adw-gtk3-${MODE}" 2>/dev/null

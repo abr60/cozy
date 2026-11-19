@@ -1,0 +1,79 @@
+# =============================================================================
+# pkgs-extra.txt — Extra packages (installed post-boot, on demand)
+# Installed via: cozy-install --extra (auto-detects pacman vs AUR)
+# Tagged packages are opt-in — installed only when called with --tag <tag>
+# =============================================================================
+
+# --- System Utilities ---
+inxi
+expac
+wev
+tree
+ncdu
+dust
+tldr
+whois
+entr
+
+# --- Hardware & Power (ThinkPad only) ---
+thinkfan          # [tag:thinkfan]
+thinkfan-cli      # [tag:thinkfan]
+
+# --- Audio ---
+pavucontrol
+easyeffects       # [tag:easyeffects]
+lsp-plugins       # [tag:easyeffects]
+zam-plugins-lv2   # [tag:easyeffects]
+calf              # [tag:easyeffects]
+
+# --- Facial recognition ---
+howdy-next-git    # [tag:howdy]
+linux-enable-ir-emitter-git # [tag:howdy]
+
+# --- Hyprpm Plugins ---
+cmake             # [tag:Hyprpm]
+pkgconf           # [tag:Hyprpm]
+ninja             # [tag:Hyprpm]
+
+
+# --- Applications ---
+obsidian
+telegram-desktop
+signal-desktop
+qbittorrent
+gifsicle
+kdenlive
+evince
+pdfarranger
+satty
+
+# --- File Manager ---
+yazi
+ffmpegthumbnailer
+chafa
+
+# --- Fonts ---
+inter-font
+
+# --- Network Storage ---
+gvfs-smb
+gvfs-nfs
+
+# --- OCR ---
+tesseract
+tesseract-data-eng
+
+# --- Development ---
+github-cli
+python-pip
+python-gobject
+
+# --- Android ---
+scrcpy
+
+# --- Camera ---
+v4l-utils
+
+# --- AUR ---
+visual-studio-code-bin
+python-ffmpeg-python

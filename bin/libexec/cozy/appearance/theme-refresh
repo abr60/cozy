@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# cozy:summary=Refresh the current theme from its templates.
+
+THEME_NAME_PATH="$HOME/.config/Cozy/current/theme.name"
+
+if [[ -f $THEME_NAME_PATH ]]; then
+  COZY_THEME_SKIP_BACKGROUND=1 theme-set "$(cat $THEME_NAME_PATH)"
+fi

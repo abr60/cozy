@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    echo "Usage: wallpaper-apply <image> | --clear" >&2
+    exit 2
+}
+
+[[ $# -eq 1 ]] || usage
+
+UID_TO_MATCH="${UID:-$(id -u)}"
+
+if command -v awww >/dev/null 2>&1 && command -v awww-daemon >/dev/null 2>&1; then
+    BACKEND=awww
+elif command -v swaybg >/dev/null 2>&1; then
+    BACKEND=swaybg
+else
+    echo "No supported wallpaper backend found; install awww or swaybg." >&2
+    exit 1
+fi
+
+stop_process() {
+    local pid
+    while IFS= read -r pid; do
+        [[ "$pid" =~ ^[0-9]+$ ]] && kill "$pid" 2>/dev/null || true
+    done < <(pgrep -u "$UID_TO_MATCH" -x "$1" || true)
+}
+
+start_process() {
+    if command -v uwsm-app >/dev/null 2>&1; then
+        uwsm-app -- "$@" >/dev/null 2>&1 &
+    else
+        "$@" >/dev/null 2>&1 &
+    fi
+}
+
+run_app() {
+    if command -v uwsm-app >/dev/null 2>&1; then
+        uwsm-app -- "$@"
+    else
+        "$@"
+    fi
+}
+
+ensure_awww_daemon() {
+    if ! pgrep -u "$UID_TO_MATCH" -x awww-daemon >/dev/null 2>&1; then
+        start_process awww-daemon
+    fi
+
+    for _ in {1..20}; do
+        pgrep -u "$UID_TO_MATCH" -x awww-daemon >/dev/null 2>&1 && return 0
+        sleep 0.1
+    done
+
+    echo "awww-daemon did not start." >&2
+    return 1
+}
+
+start_swaybg() {
+    stop_process awww-daemon
+    stop_process swaybg
+
+    if [[ "$1" == "--clear" ]]; then
+        start_process swaybg -c '#000000'
+    else
+        start_process swaybg -i "$1" -m fill
+    fi
+
+    for _ in {1..20}; do
+        pgrep -u "$UID_TO_MATCH" -x swaybg >/dev/null 2>&1 && return 0
+        sleep 0.1
+    done
+
+    echo "swaybg did not start." >&2
+    return 1
+}
+
+if [[ "$1" == "--clear" ]]; then
+    if [[ "$BACKEND" == awww ]]; then
+        stop_process swaybg
+        ensure_awww_daemon
+        run_app awww clear --color '#000000'
+    else
+        start_swaybg --clear
+    fi
+    exit
+fi
+
+[[ -f "$1" ]] || { echo "Wallpaper not found: $1" >&2; exit 1; }
+WALLPAPER="$(realpath -- "$1")"
+
+if [[ "$BACKEND" == awww ]]; then
+    stop_process swaybg
+    ensure_awww_daemon
+    TRANSITION_POS="$(hyprctl cursorpos 2>/dev/null | grep -E '^[0-9]' || echo '0,0')"
+    run_app awww img "$WALLPAPER" \
+        --transition-type grow \
+        --transition-pos "$TRANSITION_POS" \
+        --transition-fps 60 \
+        --transition-duration 0.8 \
+        --resize crop
+else
+    start_swaybg "$WALLPAPER"
+fi

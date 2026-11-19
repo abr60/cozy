@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# cozy:summary=Launch the Cozy wifi controls (provided by the Impala TUI).
+
+rfkill unblock wifi
+launch-or-focus-tui impala

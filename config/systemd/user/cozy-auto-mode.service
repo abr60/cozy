@@ -1,0 +1,13 @@
+[Unit]
+Description=Cozy Auto Mode — apply light/dark mode on startup
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 10
+ExecStart=%h/.config/matugen/bin/cozy-auto-mode
+RemainAfterExit=no
+
+[Install]
+WantedBy=graphical-session.target

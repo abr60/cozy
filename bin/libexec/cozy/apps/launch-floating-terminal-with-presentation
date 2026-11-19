@@ -1,0 +1,5 @@
+#!/bin/bash
+# cozy:summary=Launch a floating terminal with the Cozy presentation wrapper
+# cozy:args=<command>
+cmd="$*"
+exec setsid uwsm-app -- xdg-terminal-exec --app-id=org.cozy.terminal --title=Cozy -e bash -c "show-logo; $cmd; if (( \$? != 130 )); then show-done; fi"

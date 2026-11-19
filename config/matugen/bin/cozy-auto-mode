@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# =============================================================================
+# cozy-auto-mode — Apply correct light/dark mode based on current time.
+#                    Called by cron at 6:30 AM and 6:30 PM, and at boot.
+#
+# Light mode: 06:30 – 18:29
+# Dark mode:  18:30 – 06:29
+# =============================================================================
+
+# Updated path to the post-hook scripts directory
+SCRIPTS_DIR="$HOME/.config/matugen/bin"
+
+# Force base-10 math (10#) to prevent octal errors at 08 and 09 minutes/hours
+HOUR=$(date +%H)
+MIN=$(date +%M)
+TIME=$(( 10#$HOUR * 60 + 10#$MIN ))
+
+LIGHT_START=$(( 6 * 60 + 30 ))   # 06:30 = 390
+DARK_START=$(( 18 * 60 + 30 ))   # 18:30 = 1110
+
+if (( TIME >= LIGHT_START && TIME < DARK_START )); then
+    MODE="light"
+else
+    MODE="dark"
+fi
+
+# Wrapped in quotes to handle potential spaces safely
+"$SCRIPTS_DIR/cozy-set-mode" "$MODE"

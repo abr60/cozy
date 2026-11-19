@@ -1,0 +1,200 @@
+#!/usr/bin/env bash
+# =============================================================================
+# rofi-set-bg — Pick wallpaper from current theme collection and apply it,
+#               then delegate all color/theme work to cozy-set-mode.
+#
+# State files:
+#   ~/.local/state/cozy/current-theme       ← active theme name
+#   ~/.local/state/cozy/current-wallpaper   ← symlink to active wallpaper
+#   ~/.local/state/cozy/current-mode        ← "light" or "dark"
+# =============================================================================
+
+set -euo pipefail
+
+THEMES_DIR="$HOME/.local/share/Cozy/Themes"
+STATE_DIR="$HOME/.local/state/Cozy"
+THEME_FILE="$STATE_DIR/current-theme"
+CURRENT_WP_LINK="$STATE_DIR/current-wallpaper"
+ROFI_THEME="$HOME/.config/rofi/wallpaper.rasi"
+CACHE_DIR="$HOME/.cache/cozy/wallpaper-thumbs"
+THUMB_SIZE="500"
+MATUGEN_HYPRLOCK="$HOME/.config/hypr/bin/matugen-hyprlock.conf"
+SCRIPTS_DIR="$HOME/.config/matugen/bin"
+
+log() { echo "[$(date +%T.%3N)] $*" | systemd-cat -t rofi-set-bg; }
+
+# ─── Kill existing rofi if open ───────────────────────────────────────────────
+if pgrep -x rofi >/dev/null 2>&1; then
+    pkill -x rofi
+    exit 0
+fi
+
+# ─── Load current theme ───────────────────────────────────────────────────────
+THEME=$(cat "$THEME_FILE" 2>/dev/null || echo "")
+
+if [[ -z "$THEME" ]]; then
+    notify-send "Cozy" "No theme selected. Run cozy-set-theme first."
+    THEME=$(find "$THEMES_DIR" -mindepth 1 -maxdepth 1 -type d \
+        | sort | head -1 | xargs basename 2>/dev/null || echo "")
+    [[ -z "$THEME" ]] && exit 1
+    mkdir -p "$STATE_DIR"
+    echo "$THEME" > "$THEME_FILE"
+fi
+
+BG_DIR="$THEMES_DIR/$THEME/Walls"
+
+if [[ ! -d "$BG_DIR" ]]; then
+    notify-send "Cozy" "Theme Walls directory not found at $BG_DIR"
+    exit 1
+fi
+
+# ─── Read current mode ────────────────────────────────────────────────────────
+MATUGEN_MODE=$(cat "$STATE_DIR/current-mode" 2>/dev/null || echo "dark")
+
+# ─── Bootstrap hyprlock color file ────────────────────────────────────────────
+mkdir -p "$HOME/.config/hypr/bin"
+if [[ ! -f "$MATUGEN_HYPRLOCK" ]]; then
+    cat > "$MATUGEN_HYPRLOCK" << 'EOF'
+$foreground      = #e7e0e8
+$foreground_dim  = #cbc4cf
+$background      = #151218
+$primary         = #d5bbfc
+$secondary       = #cec2db
+$error           = #ffb4ab
+EOF
+fi
+
+# ─── Read border color from matugen cache ─────────────────────────────────────
+C_BORDER_LIGHT="#ffffff22"
+if [[ -f "$HOME/.cache/matugen/colors.json" ]]; then
+    C_SURFACE=$(jq -r '.colors.dark.surface // empty' \
+        "$HOME/.cache/matugen/colors.json" 2>/dev/null || echo "")
+    [[ -n "$C_SURFACE" ]] && C_BORDER_LIGHT="${C_SURFACE}44"
+fi
+
+# ─── Find wallpapers in collection ────────────────────────────────────────────
+mkdir -p "$CACHE_DIR/$THEME"
+
+declare -A seen
+declare -a WALLPAPERS
+while IFS= read -r wp; do
+    fname=$(basename "$wp")
+    if [[ -z "${seen[$fname]+x}" ]]; then
+        seen[$fname]=1
+        WALLPAPERS+=("$wp")
+    fi
+done < <(find -L "$BG_DIR" -maxdepth 1 -type f \
+    \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \
+       -o -iname "*.webp" -o -iname "*.gif" \) \
+    2>/dev/null | sort)
+
+if [[ ${#WALLPAPERS[@]} -eq 0 ]]; then
+    notify-send "Cozy" "No wallpapers found in '$THEME'"
+    exit 1
+fi
+
+# ─── Build thumbnails (parallel, xxhash integrity) ────────────────────────────
+build_thumb() {
+    local wp="$1"
+    local base
+    base=$(basename "$wp")
+    local thumb="$CACHE_DIR/$THEME/${base}.sqre.png"
+    local hash_file="$CACHE_DIR/$THEME/.${base}.xxh"
+    local lock_file="$CACHE_DIR/$THEME/.lock_${base}"
+    local current_hash
+
+    if command -v xxh64sum &>/dev/null; then
+        current_hash=$(xxh64sum "$wp" | cut -d' ' -f1)
+    else
+        current_hash=$(md5sum "$wp" | cut -d' ' -f1)
+    fi
+
+    (
+        flock -x 200
+        if [[ ! -f "$thumb" ]] || \
+           [[ ! -f "$hash_file" ]] || \
+           [[ "$current_hash" != "$(cat "$hash_file" 2>/dev/null)" ]]; then 
+            ffmpeg -y -i "$wp" \
+                -vf "select=eq(n\,0),scale=${THUMB_SIZE}:${THUMB_SIZE}:force_original_aspect_ratio=increase,crop=${THUMB_SIZE}:${THUMB_SIZE}" \
+                -vframes 1 "$thumb" >/dev/null 2>&1 && \
+            echo "$current_hash" > "$hash_file"
+        fi
+        rm -f "$lock_file"
+    ) 200>"$lock_file"
+}
+
+export -f build_thumb
+export CACHE_DIR THEME THUMB_SIZE
+
+cores=$(nproc)
+(( cores <= 2 )) && JOBS=2 || JOBS=$(( cores > 4 ? 4 : cores - 1 ))
+
+rm -f "$CACHE_DIR/$THEME"/.lock_* 2>/dev/null || true
+
+log "START — thumbnail build"
+printf '%s\0' "${WALLPAPERS[@]}" | \
+    xargs -0 -P "$JOBS" -I{} bash -c 'build_thumb "$@"' _ {}
+log "thumbnail build done"
+
+# ─── Prune stale thumbnails ───────────────────────────────────────────────────
+for cached in "$CACHE_DIR/$THEME"/*.sqre.png; do
+    [[ -f "$cached" ]] || continue
+    base=$(basename "$cached" .sqre.png)
+    [[ -f "$BG_DIR/$base" ]] || rm -f \
+        "$cached" \
+        "$CACHE_DIR/$THEME/.${base}.xxh" \
+        "$CACHE_DIR/$THEME/.lock_${base}"
+done
+
+rm -f "$CACHE_DIR/$THEME"/.lock_* 2>/dev/null || true
+
+# ─── Launch rofi picker ───────────────────────────────────────────────────────
+declare -A wp_map
+entries=""
+current_wall=$(basename "$(readlink -f "$CURRENT_WP_LINK" 2>/dev/null)" 2>/dev/null || echo "")
+
+# Pre-extract the current wallpaper's clean name for the automatic selection focus
+current_display_name="${current_wall%.*}"
+
+for wp in "${WALLPAPERS[@]}"; do
+    base=$(basename "$wp")
+    display_name="${base%.*}" # Strips the extension dynamically (e.g., "Astral.jpg" -> "Astral")
+    
+    thumb="$CACHE_DIR/$THEME/${base}.sqre.png"
+    [[ -f "$thumb" ]] || continue
+    
+    # Map the clean display name back to its actual full filepath
+    wp_map["$display_name"]="$wp"
+    
+    # ─── STATE CHECK INJECTION ───────────────────────────────────────────────
+    # Flags the row as active if it matches the current active display name
+    if [[ "$display_name" == "$current_display_name" ]]; then
+        entries+="${display_name}\0icon\x1f${thumb}\x1factive\x1ftrue\n"
+    else
+        entries+="${display_name}\0icon\x1f${thumb}\n"
+    fi
+done
+
+r_override="window { border-color: ${C_BORDER_LIGHT}; }"
+
+selected=$(echo -en "$entries" | rofi -dmenu -i -show-icons -no-custom \
+    -theme "$ROFI_THEME" \
+    -theme-str "$r_override" \
+    -select "$current_display_name") # Matches the pre-selected clean name
+
+[[ -z "$selected" ]] && exit 0
+
+NEW_WP="${wp_map[$selected]}"
+[[ ! -f "$NEW_WP" ]] && exit 1
+
+# ─── Update state symlink ─────────────────────────────────────────────────────
+mkdir -p "$STATE_DIR"
+ln -nsf "$NEW_WP" "$CURRENT_WP_LINK"
+
+log "applying wallpaper"
+"$SCRIPTS_DIR/wallpaper-apply" "$CURRENT_WP_LINK"
+
+# ─── Delegate color/theme pipeline to cozy-set-mode ────────────────────────
+log "handing off to cozy-set-mode ($MATUGEN_MODE)"
+"$SCRIPTS_DIR/cozy-set-mode" "$MATUGEN_MODE"
+log "DONE"

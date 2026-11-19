@@ -1,0 +1,11 @@
+# Changes require a restart to take effect.
+
+# Ensure Cozy and Matugen bins are in the path
+export COZY_PATH=$HOME/.local/share/Cozy
+export PATH=$HOME/.config/matugen/bin:$HOME/.local/bin:$COZY_PATH/bin:$PATH
+
+# Set default terminal and editor
+source ~/.config/uwsm/default
+
+# Activate mise if present on the system
+Cozy-cmd-present mise && eval "$(mise activate bash --shims)"

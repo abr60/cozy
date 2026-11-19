@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# set-vscode-theme — call from cozy-set-mode after gsettings
+
+SETTINGS="$HOME/.config/Code/User/settings.json"
+MODE="${1:-$(cat "$HOME/.local/state/Cozy/current-mode" 2>/dev/null || echo dark)}"
+
+[[ "$MODE" == "light" ]] && THEME="Gruvbox Light Hard" || THEME="Gruvbox Dark Hard"
+
+# Create settings.json if missing
+[[ -f "$SETTINGS" ]] || printf '{\n}\n' > "$SETTINGS"
+
+# Insert key if missing
+if ! grep -q '"workbench.colorTheme"' "$SETTINGS"; then
+    sed -i --follow-symlinks -E '0,/\{/{s/\{/{\n  "workbench.colorTheme": "",/}' "$SETTINGS"
+fi
+
+# Update the value
+sed -i --follow-symlinks -E \
+    "s/(\"workbench.colorTheme\"[[:space:]]*:[[:space:]]*\")[^\"]*(\")/\1$THEME\2/" \
+    "$SETTINGS"

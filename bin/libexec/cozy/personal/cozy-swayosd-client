@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# cozy:summary=Wrapper for swayosd-client that targets the currently focused monitor.
+# cozy:args=<swayosd-client-args...>
+
+exec swayosd-client --monitor "$(hyprland-monitor-focused)" "$@"

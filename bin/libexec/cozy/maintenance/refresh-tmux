@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# cozy:summary=Overwrite the user tmux config with the Cozy default and reload tmux.
+
+refresh-config tmux/tmux.conf
+restart-tmux

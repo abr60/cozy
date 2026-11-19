@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# cozy:summary=Reset all Cozy user configs to the defaults
+# cozy:requires-sudo=true
+
+set -e
+
+# Overwrite all user configs with the Cozy defaults.
+
+if (( EUID == 0 )); then
+  echo "Error: This script should not be run as root"
+  exit 1
+fi
+
+echo "Resetting all Cozy configs"
+cp -R ~/.local/share/Cozy/config/* ~/.config/
+cp ~/.local/share/Cozy/default/bashrc ~/.bashrc
+echo '[[ -f ~/.bashrc ]] && . ~/.bashrc' | tee ~/.bash_profile >/dev/null
+
+$(bash $COZY_PATH/install/config/theme.sh)
+
+refresh-limine
+refresh-plymouth
+nvim-setup

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# cozy:summary=Reload btop configuration (used by the Cozy theme switching).
+
+pkill -SIGUSR2 btop

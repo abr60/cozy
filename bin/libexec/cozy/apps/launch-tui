@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# cozy:summary=Launch a TUI command in the default terminal with Cozy styling
+# cozy:args=<command> [args...]
+
+exec setsid uwsm-app -- xdg-terminal-exec --app-id=org.cozy.$(basename $1) -e "$1" "${@:2}"

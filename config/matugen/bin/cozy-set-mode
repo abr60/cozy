@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+MODE="${1:-dark}"
+STATE_DIR="$HOME/.local/state/Cozy"
+SCHEME_FILE="$STATE_DIR/matugen-scheme"
+
+case "$MODE" in
+    dark|light) ;;
+    *) echo "Usage: cozy-set-mode [dark|light]" >&2; exit 2 ;;
+esac
+
+mkdir -p "$STATE_DIR"
+echo "$MODE" > "$STATE_DIR/current-mode"
+[[ "$MODE" == "light" ]] && echo "󰖙" > "$STATE_DIR/current-mode-icon" || echo "󰖔" > "$STATE_DIR/current-mode-icon"
+
+if [[ "$MODE" == "light" ]]; then
+    gsettings set org.gnome.desktop.interface color-scheme prefer-light
+else
+    gsettings set org.gnome.desktop.interface color-scheme prefer-dark
+fi
+
+if [[ "$MODE" == "light" ]]; then
+    echo "scheme-content" > "$SCHEME_FILE"
+else
+    echo "scheme-content" > "$SCHEME_FILE"
+fi
+
+CURRENT_WP="$(readlink -f "$STATE_DIR/current-wallpaper" 2>/dev/null || true)"
+SCHEME=$(cat "$SCHEME_FILE" 2>/dev/null || echo "scheme-content")
+SCRIPTS_DIR="$HOME/.config/matugen/bin"
+
+# in cozy-set-mode, after writing $MODE to state file:
+"$HOME/.config/matugen/bin/theme-set-vscode" "$MODE"
+
+if [[ ! -f "$CURRENT_WP" ]]; then
+    echo "No current wallpaper; saved mode without regenerating colors." >&2
+    exit 0
+fi
+
+if ! command -v matugen >/dev/null 2>&1; then
+    echo "Matugen is not installed; saved mode without regenerating colors." >&2
+    notify-send "Matugen unavailable" "Mode saved; wallpaper colors were not regenerated." 2>/dev/null || true
+    exit 0
+fi
+
+matugen image "$CURRENT_WP" --mode "$MODE" -q --prefer saturation -t "$SCHEME" || exit $?
+if [[ -x "$SCRIPTS_DIR/matugenMagick" ]]; then
+    "$SCRIPTS_DIR/matugenMagick"
+fi

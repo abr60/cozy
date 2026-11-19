@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# =============================================================================
+# cozy-matugen-scheme — Pick or directly apply a matugen color scheme.
+#
+# Writes to: ~/.local/state/cozy/matugen-scheme
+# Read by:   rofi-set-bg on every wallpaper apply
+#
+# Usage:
+#   cozy-matugen-scheme                    # gum picker, save, re-apply
+#   cozy-matugen-scheme --pick             # gum picker, save only
+#   cozy-matugen-scheme --apply <scheme>   # direct apply (Waybar menu)
+# =============================================================================
+
+set -euo pipefail
+
+STATE_DIR="$HOME/.local/state/Cozy"
+SCHEME_FILE="$STATE_DIR/matugen-scheme"
+SCRIPTS_DIR="$HOME/.config/matugen/bin"
+
+mkdir -p "$STATE_DIR"
+
+CURRENT=$(cat "$SCHEME_FILE" 2>/dev/null || echo "scheme-tonal-spot")
+
+# ─── --apply <scheme> — direct from Waybar menu-actions ──────────────────────
+if [[ "${1:-}" == "--apply" ]]; then
+    SCHEME="${2:-}"
+    if [[ -z "$SCHEME" ]]; then
+        notify-send -u critical "Cozy" "cozy-matugen-scheme --apply requires a scheme name"
+        exit 1
+    fi
+    # fall through to apply block below
+else
+    # ─── gum choose picker ───────────────────────────────────────────────────
+    SCHEME=$(gum choose \
+        --header "Matugen Scheme  (current: $CURRENT)" \
+        --selected "$CURRENT" \
+        "scheme-tonal-spot" \
+        "scheme-content" \
+        "scheme-expressive" \
+        "scheme-fidelity" \
+        "scheme-fruit-salad" \
+        "scheme-monochrome" \
+        "scheme-neutral" \
+        "scheme-rainbow" \
+        "scheme-vibrant") || exit 0
+
+    [[ -z "$SCHEME" ]] && exit 0
+fi
+
+# ─── Save scheme ─────────────────────────────────────────────────────────────
+echo "$SCHEME" > "$SCHEME_FILE"
+
+notify-send "Cozy" "Scheme → <b>$SCHEME</b>" \
+    -h string:x-canonical-private-synchronous:cozy_scheme
+
+# ─── Re-apply unless --pick ───────────────────────────────────────────────────
+if [[ "${1:-}" == "--pick" ]]; then
+    exit 0
+fi
+
+CURRENT_WP_LINK="$STATE_DIR/current-wallpaper"
+if [[ ! -L "$CURRENT_WP_LINK" ]]; then
+    notify-send "Cozy" "No wallpaper active — scheme saved, apply a wallpaper to see it"
+    exit 0
+fi
+
+MODE=$(cat "$STATE_DIR/current-mode" 2>/dev/null || echo "dark")
+
+CURRENT_WP="$(readlink -f "$CURRENT_WP_LINK" 2>/dev/null || true)"
+if [[ ! -f "$CURRENT_WP" ]]; then
+    notify-send "Cozy" "Current wallpaper is missing — scheme saved but not applied" || true
+    exit 0
+fi
+
+if ! command -v matugen >/dev/null 2>&1; then
+    notify-send "Matugen unavailable" "Scheme saved; colors were not regenerated." || true
+    exit 0
+fi
+
+matugen image "$CURRENT_WP" \
+    --mode "$MODE" -q --prefer saturation -t "$SCHEME"
+
+[[ -x "$SCRIPTS_DIR/matugenMagick" ]] && "$SCRIPTS_DIR/matugenMagick"

@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# =============================================================================
+# config/dotfiles.sh — Symlink config/ → ~/.config via GNU Stow
+# =============================================================================
+
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/helpers.sh"
+
+section "Config Symlinks (Stow)"
+
+# Resolve real path — Stow doesn't handle symlinked source dirs reliably
+COZY_REAL="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+CONFIG_DEST="$HOME/.config"
+
+ensure_installed stow
+
+if [[ ! -d "$COZY_REAL/config" ]]; then
+    die "$COZY_REAL/config not found — cannot stow"
+fi
+
+# ─── All subdirs present in config/ that should be stowed ────────────────────
+# Generated dynamically from config/*/ so nothing is missed or duplicated.
+STOW_DIRS=()
+for d in "$COZY_REAL/config"/*/; do
+    STOW_DIRS+=("$(basename "$d")")
+done
+
+# ─── Remove existing targets to prevent Stow fold conflicts ──────────────────
+msg "Clearing existing config targets..."
+for dir in "${STOW_DIRS[@]}"; do
+    target="$CONFIG_DEST/$dir"
+    if [[ -e "$target" || -L "$target" ]]; then
+        remove_path "$target"
+        ok "Cleared: $target"
+    fi
+done
+
+# starship.toml lives at config root — handle separately
+[[ -e "$CONFIG_DEST/starship.toml" ]] && rm -f "$CONFIG_DEST/starship.toml"
+
+# ─── Stow ─────────────────────────────────────────────────────────────────────
+mkdir -p "$HOME/.config"
+msg "Running stow..."
+cd "$COZY_REAL"
+stow --target="$HOME/.config" --verbose=1 config
+ok "Stow complete — ~/.config symlinked from $COZY_REAL/config"
+
+# ─── GTK bookmarks (template → per-user) ────────────────────────────────────
+# config/gtk-3.0/bookmarks is user-specific (contains $HOME) and is
+# gitignored; generate it from the matugen template if missing.
+GTK_BOOKMARKS_SRC="$COZY_REAL/config/matugen/templates/gtk-3.0/bookmarks"
+GTK_BOOKMARKS_DST="$HOME/.config/gtk-3.0/bookmarks"
+if [[ -f "$GTK_BOOKMARKS_SRC" ]]; then
+    mkdir -p "$(dirname "$GTK_BOOKMARKS_DST")"
+    # Expand $HOME placeholder in template to actual home path
+    sed "s|\$HOME|$HOME|g" "$GTK_BOOKMARKS_SRC" > "$GTK_BOOKMARKS_DST"
+    ok "GTK bookmarks generated at $GTK_BOOKMARKS_DST"
+fi
+
+# ─── Script permissions ───────────────────────────────────────────────────────
+find "$CONFIG_DEST/hypr/scripts" -type f -exec chmod +x {} + 2>/dev/null || true
+ok "Script permissions updated"
+
+# ─── Output directories ───────────────────────────────────────────────────────
+mkdir -p "$HOME/Pictures/Screenshots"
+mkdir -p "$HOME/Videos/Screen Recordings"
+ok "Output directories created"
+
+# ─── Animation symlink default ────────────────────────────────────────────────
+ANIM_DIR="$CONFIG_DEST/hypr/animations"
+ANIM_LINK="$CONFIG_DEST/hypr/animations.lua"
+if [[ -d "$ANIM_DIR" && ! -L "$ANIM_LINK" ]]; then
+    ln -sf "$ANIM_DIR/fast.lua" "$ANIM_LINK"
+    ok "Animation symlink set to fast.lua (default)"
+fi

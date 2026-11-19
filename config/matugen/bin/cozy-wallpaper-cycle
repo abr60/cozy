@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# =============================================================================
+# cozy-wallpaper-cycle — Cycle wallpapers within the current theme
+# Usage: cozy-wallpaper-cycle [next|prev|random]
+# =============================================================================
+
+ACTION="${1:-next}"
+THEMES_DIR="$HOME/.local/share/Cozy/Themes"
+STATE_DIR="$HOME/.local/state/Cozy"
+THEME=$(cat "$STATE_DIR/current-theme" 2>/dev/null || echo "")
+SCRIPTS_DIR="$HOME/.config/matugen/bin"
+
+[[ -z "$THEME" ]] && { notify-send "Cozy" "No theme selected"; exit 1; }
+
+BG_DIR="$THEMES_DIR/$THEME/Walls"
+CURRENT_WP_LINK="$STATE_DIR/current-wallpaper"
+CURRENT_WP=$(readlink -f "$CURRENT_WP_LINK" 2>/dev/null || echo "")
+
+mapfile -t WALLS < <(
+    find -L "$BG_DIR" -maxdepth 1 -type f \
+    \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \
+       -o -iname "*.webp" -o -iname "*.gif" \) | sort
+)
+
+COUNT=${#WALLS[@]}
+[[ $COUNT -eq 0 ]] && { notify-send "Cozy" "No wallpapers found"; exit 1; }
+
+# Find current index
+CURRENT_IDX=0
+for i in "${!WALLS[@]}"; do
+    [[ "${WALLS[$i]}" == "$CURRENT_WP" ]] && { CURRENT_IDX=$i; break; }
+done
+
+case "$ACTION" in
+    next)   NEW_IDX=$(( (CURRENT_IDX + 1) % COUNT )) ;;
+    prev)   NEW_IDX=$(( (CURRENT_IDX - 1 + COUNT) % COUNT )) ;;
+    random) NEW_IDX=$(( RANDOM % COUNT )) ;;
+    *)      NEW_IDX=$(( (CURRENT_IDX + 1) % COUNT )) ;;
+esac
+
+NEW_WP="${WALLS[$NEW_IDX]}"
+ln -nsf "$NEW_WP" "$CURRENT_WP_LINK"
+
+"$SCRIPTS_DIR/wallpaper-apply" "$CURRENT_WP_LINK" || exit $?
+
+MATUGEN_MODE=$(cat "$STATE_DIR/current-mode" 2>/dev/null || echo "dark")
+"$SCRIPTS_DIR/cozy-set-mode" "$MATUGEN_MODE"

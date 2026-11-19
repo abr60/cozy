@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# cozy:summary=Allow Chromium to sign in to Google accounts by adding the required OAuth credentials
+
+CLIENT_ID="${CHROMIUM_OAUTH_CLIENT_ID:-}"
+CLIENT_SECRET="${CHROMIUM_OAUTH_CLIENT_SECRET:-}"
+
+if [[ -z "$CLIENT_ID" || -z "$CLIENT_SECRET" ]]; then
+  echo "Set CHROMIUM_OAUTH_CLIENT_ID and CHROMIUM_OAUTH_CLIENT_SECRET to your own OAuth credentials." >&2
+  exit 1
+fi
+
+if [[ "$CLIENT_ID" == *$'\n'* || "$CLIENT_ID" == *$'\r'* || "$CLIENT_SECRET" == *$'\n'* || "$CLIENT_SECRET" == *$'\r'* ]]; then
+  echo "OAuth credentials must not contain line breaks." >&2
+  exit 1
+fi
+
+if [[ -f ~/.config/chromium-flags.conf ]]; then
+  echo "Installing Chromium Google account support..."
+  CONF=~/.config/chromium-flags.conf
+
+  grep -qxF -- "--oauth2-client-id=$CLIENT_ID" "$CONF" ||
+    printf '%s\n' "--oauth2-client-id=$CLIENT_ID" >>"$CONF"
+
+  grep -qxF -- "--oauth2-client-secret=$CLIENT_SECRET" "$CONF" ||
+    printf '%s\n' "--oauth2-client-secret=$CLIENT_SECRET" >>"$CONF"
+
+  echo "Now you can login to your Google Account in Chromium."
+fi

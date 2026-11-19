@@ -1,0 +1,1 @@
+libexec/cozy/media/whatsapp_call.sh

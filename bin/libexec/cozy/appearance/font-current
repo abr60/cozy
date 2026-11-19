@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# cozy:summary=Show current monospace font
+# cozy:examples=cozy font current
+
+grep -oP 'font-family:\s*["'\'']?\K[^;"'\'']+' ~/.config/waybar/style.css | head -n1

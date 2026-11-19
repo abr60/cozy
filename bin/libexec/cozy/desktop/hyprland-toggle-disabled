@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# cozy:summary=Check if a Hyprland toggle is currently disabled (missing).
+# cozy:args=<flag-name>
+
+[[ ! -f "$HOME/.local/state/Cozy/toggles/hypr/$1.conf" ]]

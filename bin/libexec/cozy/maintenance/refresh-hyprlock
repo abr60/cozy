@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# cozy:summary=Overwrite the user config for hyprlock with the Cozy default.
+
+refresh-config hypr/hyprlock.conf

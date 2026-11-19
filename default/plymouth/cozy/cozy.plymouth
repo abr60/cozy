@@ -1,0 +1,11 @@
+[Plymouth Theme]
+Name=Cozy
+Description=Cozy boot splash — ASCII art philosopher portrait with minimal LUKS prompt.
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/cozy
+ScriptFile=/usr/share/plymouth/themes/cozy/cozy.script
+ConsoleLogBackgroundColor=0x051305
+MonospaceFont=Liberation Mono 12
+Font=Liberation Mono 12

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# summary=Wake displays and restore brightness after idle
+
+brightness-display on
+brightness-keyboard restore

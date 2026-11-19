@@ -1,0 +1,110 @@
+#  ┳┳┓┏┓┏┳┓┳┳┏┓┏┓┳┓
+#  ┃┃┃┣┫ ┃ ┃┃┃┓┣ ┃┃
+#  ┛ ┗┛┗ ┻ ┗┛┗┛┗┛┛┗
+
+[config]
+version_check = false
+
+# ─── Templates ────────────────────────────────────────────────────────────────
+
+
+# 1. Compositor (CRITICAL: Must run first)
+[templates.hyprland_lua]
+input_path  = "~/.config/matugen/templates/hyprland.lua"
+output_path = "~/.config/hypr/bin/colors.lua"
+post_hook   = "hyprctl reload"
+
+[templates.waybar]
+input_path  = "~/.config/matugen/templates/waybar.css"
+output_path = "~/.config/waybar/matugen.css"
+
+[templates.quickshell_overview]
+input_path = '~/.config/matugen/templates/quickshell-overview.qml'
+output_path = '~/.config/quickshell/overview/common/Appearance.colors.qml'
+
+[templates.hyprlock]
+input_path  = "~/.config/matugen/templates/hyprlock.conf"
+output_path = "~/.config/hypr/hyprlock.conf"
+
+[templates.fuzzel]
+input_path = '~/.config/matugen/templates/fuzzel/fuzzel_theme.ini'
+output_path = '~/.config/fuzzel/fuzzel_theme.ini'
+
+[templates.qs_bar_colors]
+input_path  = "~/.config/matugen/templates/qs-colors.toml"
+output_path = "~/.local/state/cozy/qs-colors.toml"
+
+# 3. Terminal
+[templates.kitty]
+input_path  = "~/.config/matugen/templates/kitty.conf"
+output_path = "~/.config/kitty/colors.conf"
+post_hook   = "pkill -USR1 kitty"
+
+# 4. Apps
+[templates.cava]
+input_path  = "~/.config/matugen/templates/cava.ini"
+output_path = "~/.config/cava/config"
+post_hook   = "pkill -USR1 cava"
+
+[templates.gtk3]
+input_path  = "~/.config/matugen/templates/gtk-3.0/gtk.css"
+output_path = "~/.config/gtk-3.0/colors.css"
+post_hook   = 'gtk-theme-reload'
+
+[templates.gtk4]
+input_path  = "~/.config/matugen/templates/gtk-4.0/gtk.css"
+output_path = "~/.config/gtk-4.0/gtk.css"
+post_hook   = 'gtk-theme-reload "{{image}}"'
+
+[templates.kde_colors]
+input_path = '~/.config/matugen/templates/kde/color.txt'
+output_path = '~/.local/state/quickshell/user/generated/color.txt'
+
+[templates.btop]
+input_path  = '~/.config/matugen/templates/btop.theme'
+output_path = '~/.config/btop/themes/matugen.theme'
+post_hook   = 'pkill -USR2 btop || true'
+
+# 5. Passive (no post_hook)
+[templates.rmpc]
+input_path  = "~/.config/matugen/templates/rmpc.ron"
+output_path = "~/.config/rmpc/themes/matugen.ron"
+
+[templates.rofi]
+input_path  = "~/.config/matugen/templates/rofi.rasi"
+output_path = "~/.config/rofi/matugen.rasi"
+
+[templates.yazi]
+input_path  = '~/.config/matugen/templates/yazi-theme.toml'
+output_path = '~/.config/yazi/theme.toml'
+
+[templates.obsidian]
+input_path  = '~/.config/matugen/templates/obsidian.css'
+output_path = '~/Documents/Obsidian Vault/.obsidian/snippets/matugen.css'
+
+[templates.swayosd]
+input_path  = "~/.config/matugen/templates/swayosd.css"
+output_path = "~/.config/swayosd/matugen.css"
+post_hook   = "restart-swayosd"
+
+[templates.mako]
+input_path = '~/.config/matugen/templates/mako'
+output_path = '~/.config/mako/colors'
+post_hook = 'makoctl reload'
+
+[templates.spicetify]
+input_path = '~/.config/matugen/templates/spicetify.ini'
+output_path = '~/.config/spicetify/Themes/caelestia/color.ini'
+post_hook = 'pgrep -x spotify >/dev/null && spicetify watch -s & sleep 0.5 && pkill -f "spicetify watch"'
+
+
+# ─── Disabled ─────────────────────────────────────────────────────────────────
+
+#[templates.swaync]
+
+#[templates.mako]
+#[templates.walker]
+#[templates.ghostty]
+
+#[templates.wlogout]
+#[templates.mode-flag]

@@ -1,0 +1,21 @@
+#!/bin/bash
+# cozy:summary=Pull the latest Cozy git changes
+set -e
+
+echo -e "\e[32mUpdate Cozy\e[0m"
+update-time
+
+COZY_PATH="${COZY_PATH:-$HOME/.local/share/Cozy}"
+
+if [[ ! -d "$COZY_PATH/.git" ]]; then
+  echo "No git repo found at $COZY_PATH — skipping git pull"
+  exit 0
+fi
+
+# Suppress Hyprland config errors while git updates default config files mid-pull
+hyprctl keyword debug:suppress_errors true &>/dev/null || true
+
+git -C "$COZY_PATH" pull --autostash
+git -C "$COZY_PATH" --no-pager diff --check || git -C "$COZY_PATH" reset --merge
+
+hyprctl reload &>/dev/null || true

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# =============================================================================
+# rofi-emoji — Cozy-styled emoji picker for rofi
+# Displays ONLY the emoji column in a grid; keywords stay searchable.
+# Copies the selected emoji to the clipboard with wl-copy.
+# Requires: rofi (provides rofi-wayland), wl-copy
+# =============================================================================
+set -euo pipefail
+
+DATA_FILE="$HOME/.config/hypr/emojis.tsv"
+THEME="$HOME/.config/rofi/emoji.rasi"
+
+selection="$(cat "$DATA_FILE" \
+    | rofi -dmenu \
+       -i \
+       -matching prefix \
+       -sort \
+       -display-columns 1 \
+       -display-column-separator $'\t' \
+       -theme "$THEME" \
+       -format 's' | cut -f1)"
+
+if [[ -n "${selection:-}" ]]; then
+    printf '%s' "$selection" | wl-copy
+fi

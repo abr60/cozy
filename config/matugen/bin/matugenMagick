@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# =============================================================================
+# matugenMagick — Post-matugen tasks: XDG bg symlink, icon theme, notify
+# =============================================================================
+STATE_DIR="$HOME/.local/state/Cozy"
+CURRENT_WP_LINK="$STATE_DIR/current-wallpaper"
+
+wallpaper_path=$(readlink -f "$CURRENT_WP_LINK" 2>/dev/null || echo "")
+if [[ -z "$wallpaper_path" || ! -f "$wallpaper_path" ]]; then
+    notify-send -u critical "MatugenMagick" "Could not resolve current wallpaper path"
+    exit 1
+fi
+
+# ─── XDG wallpaper symlink ────────────────────────────────────────────────────
+mkdir -p "$HOME/.local/share"
+ln -sf "$wallpaper_path" "$HOME/.local/share/bg"
+
+# ─── Completion notification ──────────────────────────────────────────────────
+if command -v notify-send >/dev/null 2>&1; then
+    notify-send \
+        -h string:x-canonical-private-synchronous:cozy_matugen \
+        "Cozy" "Wallpaper and colors applied" \
+        -i "$HOME/.local/share/bg"
+fi

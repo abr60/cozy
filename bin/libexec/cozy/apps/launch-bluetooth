@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# cozy:summary=Launch the Cozy bluetooth controls TUI (provided by bluetui).
+
+rfkill unblock bluetooth
+exec launch-or-focus-tui bluetui

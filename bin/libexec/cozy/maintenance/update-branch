@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# cozy:summary=Switch Cozy branches and update from the selected branch
+# cozy:args=<branch>
+
+set -e
+
+if (($# == 0)); then
+  echo "Usage: update-branch [master|dev]"
+  exit 1
+fi
+
+branch="$1"
+
+# Snapshot before switching branch
+snapshot create || (( $? == 127 ))
+
+if ! git -C "$COZY_PATH" diff --quiet || ! git -C "$COZY_PATH" diff --cached --quiet; then
+  stashed=true
+  git -C "$COZY_PATH" stash push -u -m "Autostash before switching to $branch"
+else
+  stashed=false
+fi
+
+# Switch branches
+git -C "$COZY_PATH" switch "$branch"
+
+# Reapply stash if we made one
+if [[ $stashed == "true" ]]; then
+  if ! git -C "$COZY_PATH" stash pop; then
+    echo "⚠️ Conflicts when applying stash — stash kept"
+  fi
+fi
+
+# Update the system from the new branch
+update-perform

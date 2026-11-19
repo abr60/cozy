@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# cozy:summary=List available themes
+# cozy:examples=cozy theme list | cozy theme set "Tokyo Night"
+
+{
+  find ~/.config/Cozy/themes/ -mindepth 1 -maxdepth 1 \( -type d -o -type l \) -printf '%f\n'
+  find "$COZY_PATH/themes/" -mindepth 1 -maxdepth 1 -type d -printf '%f\n'
+} | sort -u | while read -r name; do
+  echo "$name" | sed -E 's/(^|-)([a-z])/\1\u\2/g; s/-/ /g'
+done

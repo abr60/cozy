@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# cozy:summary=Install Zed Editor and configure it with the current Cozy theme
+
+echo "Installing Zed Editor..."
+pkg-add zed omazed
+
+# Apply Cozy theme to Zed
+omazed setup
+
+setsid gtk-launch dev.zed.Zed

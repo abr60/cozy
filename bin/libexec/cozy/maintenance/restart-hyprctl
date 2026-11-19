@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# cozy:summary=Reload hyprland configuration (used by the Cozy theme switching).
+
+hyprctl reload >/dev/null

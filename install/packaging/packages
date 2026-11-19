@@ -1,0 +1,380 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Cozy - Package Installer (batched)
+# Usage:
+#   bash packages              # installs core (pkgs-core.txt)
+#   bash packages extra        # installs extra (pkgs-extra.txt), untagged only
+#   bash packages extra --tag <tag>  # installs only lines tagged [tag:<tag>]
+# =============================================================================
+
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MODE="${1:-core}"
+TAG=""
+
+# Parse --tag argument
+if [[ "${2:-}" == "--tag" && -n "${3:-}" ]]; then
+    TAG="${3}"
+fi
+
+LOG_DIR="$HOME/.local/state/Cozy/logs"
+LOG_FILE="$LOG_DIR/install-packages-${MODE}${TAG:+-$TAG}.log"
+
+mkdir -p "$LOG_DIR"
+
+source "$(dirname "$SCRIPT_DIR")/lib/helpers.sh"
+
+# =============================================================================
+# Select package list
+# =============================================================================
+if [[ "$MODE" == "extra" ]]; then
+    PKG_LIST="$SCRIPT_DIR/pkgs-extra.txt"
+    LIST_LABEL="EXTRA${TAG:+ [tag:$TAG]}"
+else
+    PKG_LIST="$SCRIPT_DIR/pkgs-core.txt"
+    LIST_LABEL="CORE"
+fi
+
+if [[ ! -f "$PKG_LIST" ]]; then
+    die "Package list not found: $PKG_LIST"
+fi
+
+# =============================================================================
+# Parse package list
+# =============================================================================
+if [[ -n "$TAG" ]]; then
+    mapfile -t PKGS < <(grep "\[tag:${TAG}\]" "$PKG_LIST" | grep -v '^\s*#' | grep -v '^\s*$' | awk '{print $1}')
+else
+    mapfile -t PKGS < <(grep -v '^\s*#' "$PKG_LIST" | grep -v '^\s*$' | grep -v '\[tag:' | awk '{print $1}')
+fi
+
+if [[ ${#PKGS[@]} -eq 0 ]]; then
+    die "No packages found in $PKG_LIST"
+fi
+
+# =============================================================================
+# Display packages to be installed
+# =============================================================================
+echo ""
+gum style \
+    --foreground 117 --border-foreground 117 --border rounded \
+    --align center --width 50 --padding "0 1" \
+    "$LIST_LABEL PACKAGES TO INSTALL" \
+    "${#PKGS[@]} packages"
+
+echo ""
+cols=3
+count=0
+row=""
+for pkg in "${PKGS[@]}"; do
+    row+="$(printf "  %-30s" "$pkg")"
+    (( count++ ))
+    if (( count % cols == 0 )); then
+        gum style --foreground 245 "$row"
+        row=""
+    fi
+done
+[[ -n "$row" ]] && gum style --foreground 245 "$row"
+
+echo ""
+gum confirm "Proceed with installation?" || { msg "Aborted."; exit 0; }
+
+# Start timer after user confirmation
+START_TIME=$(date +%s)
+
+# =============================================================================
+# Pre-flight: sync DB, fastest mirrors, parallel builds
+# =============================================================================
+section "Preparing package manager"
+
+# Rank mirrors: disabled by default on fresh archiso — archinstall mirrors are
+# already geo-selected and reliable. Ranking with reflector frequently picks
+# unreachable mirrors and breaks pacman -Sy (the failure you just hit).
+# Only rank if you explicitly opt in: COZY_RANK_MIRRORS=1 bash packages
+# or: sudo reflector --latest 10 --protocol https --sort age --save /tmp/ml && sudo cp /tmp/ml /etc/pacman.d/mirrorlist
+if [[ "${COZY_RANK_MIRRORS:-0}" == "1" ]] && command -v reflector &>/dev/null; then
+    msg "Ranking fastest mirrors (reflector) — opt-in..."
+    REF_TMP=$(mktemp)
+    REF_BAK="/etc/pacman.d/mirrorlist.bak.$(date +%s)"
+    sudo cp /etc/pacman.d/mirrorlist "$REF_BAK" 2>/dev/null || true
+    if timeout 45 reflector --latest 10 --protocol https --sort age --save "$REF_TMP" >> "$LOG_FILE" 2>&1; then
+        if [[ -s "$REF_TMP" ]]; then
+            sudo cp "$REF_TMP" /etc/pacman.d/mirrorlist
+            ok "Mirrors ranked"
+            # Verify new mirrors actually work — restore on failure
+            if ! sudo pacman -Sy --noconfirm >> "$LOG_FILE" 2>&1; then
+                warn "pacman -Sy failed with ranked mirrors — restoring backup"
+                sudo cp "$REF_BAK" /etc/pacman.d/mirrorlist 2>/dev/null || true
+                sudo pacman -Sy --noconfirm >> "$LOG_FILE" 2>&1 || warn "pacman -Sy still failed after restore"
+            fi
+        else
+            warn "reflector produced empty file — keeping current mirrorlist"
+        fi
+    else
+        warn "reflector failed or timed out — using current mirrorlist"
+    fi
+    rm -f "$REF_TMP"
+else
+    if command -v reflector &>/dev/null; then
+        msg "Skipping mirror ranking (use COZY_RANK_MIRRORS=1 to enable)"
+    else
+        msg "reflector not installed — skipping mirror ranking"
+    fi
+    msg "Syncing package databases..."
+    if ! sudo pacman -Sy --noconfirm >> "$LOG_FILE" 2>&1; then
+        warn "pacman -Sy failed — will restore latest backup mirrorlist and retry"
+        LATEST_BAK=$(ls -t /etc/pacman.d/mirrorlist.bak.* 2>/dev/null | head -1 || true)
+        if [[ -n "$LATEST_BAK" ]]; then
+            sudo cp "$LATEST_BAK" /etc/pacman.d/mirrorlist 2>/dev/null || true
+            sudo pacman -Sy --noconfirm >> "$LOG_FILE" 2>&1 || warn "pacman -Sy still failed — check network/time"
+        else
+            warn "No backup mirrorlist found — check network (ping archlinux.org) and system time (timedatectl)"
+        fi
+    fi
+fi
+
+# Enable parallel AUR builds
+if ! grep -q '^\s*MAKEFLAGS=' /etc/makepkg.conf 2>/dev/null; then
+    JOBS="$(nproc)"
+    # Leave one core free on beefy machines
+    (( JOBS > 2 )) && JOBS=$((JOBS - 1))
+    echo "MAKEFLAGS=\"-j${JOBS}\"" | sudo tee -a /etc/makepkg.conf >> "$LOG_FILE" 2>&1
+    ok "MAKEFLAGS=-j${JOBS} added to /etc/makepkg.conf"
+fi
+
+# =============================================================================
+# Helpers
+# =============================================================================
+pkg_is_installed() {
+    pacman -Q "$1" &>/dev/null
+}
+
+pkg_in_pacman() {
+    pacman -Si "$1" &>/dev/null 2>&1
+}
+
+bootstrap_yay() {
+    if ! command -v yay &>/dev/null; then
+        echo -e "  \033[33m[....]\033[0m 'yay' not found — bootstrapping AUR helper..."
+        msg "Installing base-devel + git for AUR builds..."
+        if ! sudo pacman -S --noconfirm --needed base-devel git >> "$LOG_FILE" 2>&1; then
+            warn "base-devel/git install failed — retrying with fresh DB"
+            sudo pacman -Sy --noconfirm >> "$LOG_FILE" 2>&1 || true
+            sudo pacman -S --noconfirm --needed base-devel git >> "$LOG_FILE" 2>&1 || {
+                echo -e "  \033[31m[fail]\033[0m base-devel/git install failed — cannot build yay"
+                return 1
+            }
+        fi
+
+        local tmp_dir
+        tmp_dir=$(mktemp -d)
+        trap 'rm -rf "$tmp_dir"' RETURN
+
+        msg "Cloning yay-bin..."
+        if ! git clone https://aur.archlinux.org/yay-bin.git "$tmp_dir" >> "$LOG_FILE" 2>&1; then
+            echo -e "  \033[31m[fail]\033[0m git clone yay-bin failed — check network"
+            echo "git clone yay-bin failed" >> "$LOG_FILE"
+            return 1
+        fi
+
+        msg "Building yay-bin (makepkg)..."
+        if ( cd "$tmp_dir" && makepkg -si --noconfirm --needed >> "$LOG_FILE" 2>&1 ); then
+            if command -v yay &>/dev/null; then
+                echo -e "  \033[32m[ ok ]\033[0m 'yay' successfully installed"
+                return 0
+            fi
+        else
+            warn "makepkg failed — see $LOG_FILE"
+        fi
+
+        if command -v yay &>/dev/null; then
+            echo -e "  \033[32m[ ok ]\033[0m 'yay' installed (late check)"
+            return 0
+        fi
+
+        echo -e "  \033[31m[fail]\033[0m Failed to install 'yay'. AUR packages will fail."
+        echo "yay bootstrap failed — check $LOG_FILE" >> "$LOG_FILE"
+        return 1
+    fi
+    ok "yay already installed ($(yay --version 2>/dev/null | head -1))"
+}
+
+# =============================================================================
+# Classify packages: repo vs AUR, skip already installed
+# =============================================================================
+echo ""
+section "Installing $LIST_LABEL packages"
+echo "Install started: $(date)" >> "$LOG_FILE"
+
+bootstrap_yay
+
+SKIPPED=()
+REPO_PKGS=()
+AUR_PKGS=()
+
+for pkg in "${PKGS[@]}"; do
+    if pkg_is_installed "$pkg"; then
+        SKIPPED+=("$pkg")
+    elif pkg_in_pacman "$pkg"; then
+        REPO_PKGS+=("$pkg")
+    else
+        AUR_PKGS+=("$pkg")
+    fi
+done
+
+if [[ ${#SKIPPED[@]} -gt 0 ]]; then
+    msg "${#SKIPPED[@]} already installed — skipping"
+    printf '  \033[90m[skip]\033[0m %s\n' "${SKIPPED[@]}"
+fi
+
+INSTALLED=()
+FAILED=()
+
+# =============================================================================
+# Batched install — ONE pacman transaction + ONE yay transaction
+# =============================================================================
+if [[ ${#REPO_PKGS[@]} -gt 0 ]]; then
+    msg "Installing ${#REPO_PKGS[@]} repo packages in one transaction..."
+    echo "REPO batch: ${REPO_PKGS[*]}" >> "$LOG_FILE"
+    if sudo pacman -S --noconfirm --needed "${REPO_PKGS[@]}" >> "$LOG_FILE" 2>&1; then
+        for pkg in "${REPO_PKGS[@]}"; do
+            if pkg_is_installed "$pkg"; then
+                INSTALLED+=("$pkg")
+            else
+                FAILED+=("$pkg")
+            fi
+        done
+        ok "Repo batch done — ${#REPO_PKGS[@]} packages"
+    else
+        warn "Repo batch failed — falling back to per-package install"
+        for pkg in "${REPO_PKGS[@]}"; do
+            echo -ne "  \033[33m[....]\033[0m $pkg"
+            if sudo pacman -S --noconfirm --needed "$pkg" >> "$LOG_FILE" 2>&1 && pkg_is_installed "$pkg"; then
+                INSTALLED+=("$pkg")
+                echo -e "\r  \033[32m[ ok ]\033[0m $pkg"
+            else
+                FAILED+=("$pkg")
+                echo -e "\r  \033[31m[fail]\033[0m $pkg"
+                echo "FAILED: $pkg" >> "$LOG_FILE"
+            fi
+        done
+    fi
+fi
+
+if [[ ${#AUR_PKGS[@]} -gt 0 ]]; then
+    if ! command -v yay &>/dev/null; then
+        warn "yay not available — ${#AUR_PKGS[@]} AUR packages cannot be installed"
+        FAILED+=("${AUR_PKGS[@]}")
+        for pkg in "${AUR_PKGS[@]}"; do echo "FAILED (no yay): $pkg" >> "$LOG_FILE"; done
+    else
+        msg "Installing ${#AUR_PKGS[@]} AUR packages in one transaction..."
+        echo "AUR batch: ${AUR_PKGS[*]}" >> "$LOG_FILE"
+        if yay -S --noconfirm --needed "${AUR_PKGS[@]}" >> "$LOG_FILE" 2>&1; then
+            for pkg in "${AUR_PKGS[@]}"; do
+                if pkg_is_installed "$pkg"; then
+                    INSTALLED+=("$pkg")
+                else
+                    FAILED+=("$pkg")
+                fi
+            done
+            ok "AUR batch done — ${#AUR_PKGS[@]} packages"
+        else
+            warn "AUR batch failed — falling back to per-package install"
+            for pkg in "${AUR_PKGS[@]}"; do
+                echo -ne "  \033[33m[....]\033[0m $pkg \033[90m(aur)\033[0m"
+                if yay -S --noconfirm --needed "$pkg" >> "$LOG_FILE" 2>&1 && pkg_is_installed "$pkg"; then
+                    INSTALLED+=("$pkg")
+                    echo -e "\r  \033[32m[ ok ]\033[0m $pkg \033[90m(aur)\033[0m"
+                else
+                    FAILED+=("$pkg")
+                    echo -e "\r  \033[31m[fail]\033[0m $pkg"
+                    echo "FAILED: $pkg" >> "$LOG_FILE"
+                fi
+            done
+        fi
+    fi
+fi
+
+# =============================================================================
+# Summary
+# =============================================================================
+echo ""
+gum style \
+    --foreground 82 --border-foreground 82 --border rounded \
+    --align center --width 50 --padding "0 1" \
+    "PACKAGE INSTALL SUMMARY"
+
+echo ""
+gum style --foreground 82  "  ✓ Installed : ${#INSTALLED[@]}"
+gum style --foreground 245 "  - Skipped   : ${#SKIPPED[@]} (already present)"
+gum style --foreground 196 "  ✗ Failed    : ${#FAILED[@]}"
+
+if [[ ${#FAILED[@]} -gt 0 ]]; then
+    echo ""
+    gum style --foreground 196 "  Failed packages:"
+    for pkg in "${FAILED[@]}"; do
+        gum style --foreground 196 "    • $pkg"
+    done
+    echo ""
+    gum style --foreground 245 "  See full log: $LOG_FILE"
+fi
+
+echo ""
+echo "Install finished: $(date)" >> "$LOG_FILE"
+echo "Installed: ${INSTALLED[*]:-none}" >> "$LOG_FILE"
+echo "Skipped: ${SKIPPED[*]:-none}" >> "$LOG_FILE"
+echo "Failed: ${FAILED[*]:-none}" >> "$LOG_FILE"
+
+END_TIME=$(date +%s)
+TOTAL_TIME=$((END_TIME - START_TIME))
+MINUTES=$((TOTAL_TIME / 60))
+SECONDS_LEFT=$((TOTAL_TIME % 60))
+
+echo "Total Time: ${MINUTES}m ${SECONDS_LEFT}s (${TOTAL_TIME} seconds)" >> "$LOG_FILE"
+
+# =============================================================================
+# Performance Summary
+# =============================================================================
+echo ""
+
+gum style --foreground 141 \
+"⏱️ Total time: ${MINUTES}m $(printf "%02d" "$SECONDS_LEFT")s (${TOTAL_TIME} seconds)"
+
+if (( ${#INSTALLED[@]} == 0 )); then
+    gum style --foreground 244 \
+    "✓ Nothing needed installing. All packages were already present."
+elif (( TOTAL_TIME <= 30 )); then
+    gum style --foreground 46 \
+    "⚡ Holy speed! Installation finished in a flash."
+    gum style --foreground 46 \
+    "🚀 Your internet connection is absolutely elite. Keep flexing that bandwidth!"
+elif (( TOTAL_TIME <= 60 )); then
+    gum style --foreground 153 \
+    "🏹 Nice! That was quick."
+    gum style --foreground 153 \
+    "📦 Pacman barely had time to unpack its bags."
+elif (( TOTAL_TIME <= 180 )); then
+    gum style --foreground 214 \
+    "☕ Not bad."
+    gum style --foreground 214 \
+    "📦 Just enough time to grab a coffee while Arch did its thing."
+elif (( TOTAL_TIME <= 300 )); then
+    gum style --foreground 208 \
+    "🐢 Well... that took a hot minute."
+    gum style --foreground 208 \
+    "📡 Either your mirror was taking a nap or the AUR was compiling the universe."
+else
+    gum style --foreground 196 \
+    "💀 Congratulations. You witnessed geological time."
+    gum style --foreground 196 \
+    "📶 Your Wi-Fi connection straight up sucks. Are you stealing internet from a toaster?"
+    gum style --foreground 244 \
+    "📡 If it wasn't the Wi-Fi, blame the mirrors. They can defend themselves."
+    gum style --foreground 226 \
+    "💡 Suggestion: Fix your router, yell at your ISP, or move closer to civilization."
+fi
+
+echo ""
+
+[[ ${#FAILED[@]} -gt 0 ]] && exit 1 || exit 0
