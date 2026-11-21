@@ -46,3 +46,6 @@ matugen image "$CURRENT_WP" --mode "$MODE" -q --prefer saturation -t "$SCHEME" |
 if [[ -x "$SCRIPTS_DIR/matugenMagick" ]]; then
     "$SCRIPTS_DIR/matugenMagick"
 fi
+
+# The gtk4 template post_hook calls `gtk-theme-reload "{{image}}"`, which applies
+# the wallpaper hue to the Papirus overlay and switches the icon theme.

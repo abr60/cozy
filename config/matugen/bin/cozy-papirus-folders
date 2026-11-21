@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# =============================================================================
+# cozy-papirus-folders — set Papirus folder colors via user-local overlay theme
+#
+# This creates tiny icon-theme overlays under ~/.local/share/icons/:
+#   CozyPapirus-Dark-<color>  for dark mode
+#   CozyPapirus-<color>       for light mode
+# The overlay inherits Papirus-Dark (or Papirus) and contains symlinks that
+# point at the matching colored SVG from the system theme. GTK invalidates its
+# icon cache when the theme name changes, so the recolor applies instantly with
+# a gsettings toggle — no AUR packages, no root.
+#
+# Usage: cozy-papirus-folders <color> <mode>
+#   color: one of blue red orange yellow green teal cyan indigo violet magenta
+#   mode: dark or light
+#
+# Requires: ImageMagick (for existing hue detection in gtk-theme-reload) — this
+# script only does the overlay/theme creation. The caller (gtk-theme-reload) computes
+# the color from the wallpaper's dominant hue.
+# =============================================================================
+
+set -uo pipefail
+
+# ── arguments ────────────────────────────────────────────────────────────────
+if (( $# != 2 )); then
+    echo "Usage: $0 <color> <mode>" >&2
+    echo "  color: blue red orange yellow green teal cyan indigo violet magenta" >&2
+    echo "  mode:  dark or light" >&2
+    exit 1
+fi
+
+COLOR="$1"
+MODE="$2"
+
+# validate color
+VALID_COLORS="blue red orange yellow green teal cyan indigo violet magenta"
+VALID=0
+for cv in $VALID_COLORS; do
+    if [[ "$COLOR" == "$cv" ]]; then
+        VALID=1
+        break
+    fi
+done
+if (( VALID == 0 )); then
+    echo "Invalid color: $COLOR" >&2
+    echo "Valid: $VALID_COLORS" >&2
+    exit 1
+fi
+
+# validate mode
+if [[ "$MODE" != "dark" && "$MODE" != "light" ]]; then
+    echo "Invalid mode: $MODE" >&2
+    echo "Valid: dark or light" >&2
+    exit 1
+fi
+
+# ── theme directories ────────────────────────────────────────────────────────
+THEME_DIR_USER="$HOME/.local/share/icons"
+
+# overlay dir names match the gtk-theme-reload convention:
+#   CozyPapirus-Dark-<color>  for dark mode
+#   CozyPapirus-<color>       for light mode
+if [[ "$MODE" == "dark" ]]; then
+    THEME_DIR_SYSTEM="/usr/share/icons/Papirus-Dark"
+    ICON_THEME_BASE="Papirus-Dark"
+    THEME_NAME="CozyPapirus-Dark-${COLOR}"
+else
+    THEME_DIR_SYSTEM="/usr/share/icons/Papirus"
+    ICON_THEME_BASE="Papirus"
+    THEME_NAME="CozyPapirus-${COLOR}"
+fi
+OVERLAY_DIR="${THEME_DIR_USER}/${THEME_NAME}"
+
+# ── clean up stale overlays ─────────────────────────────────────────────────
+# Rebuild this exact overlay fresh and remove every other CozyPapirus-* overlay,
+# so we never accumulate more than one (keeps the icon cache small).
+for d in "${THEME_DIR_USER}"/CozyPapirus-*; do
+    [[ -d "$d" ]] || continue
+    rm -rf "$d"
+done
+
+# ── build the overlay ────────────────────────────────────────────────────────
+mkdir -p "$OVERLAY_DIR"
+
+# create index.theme — inherit the system theme and describe each places dir
+# (each directory needs a Size/Context section or GTK warns "has no size field")
+{
+    printf '[Icon Theme]\n'
+    printf 'Name=%s\n' "$THEME_NAME"
+    printf 'Comment=Papirus folder color overlay for %s mode, %s folders\n' "$MODE" "$COLOR"
+    printf 'Inherits=%s\n' "$ICON_THEME_BASE"
+    printf 'Directories=16x16/places,22x22/places,24x24/places,32x32/places,48x48/places,64x64/places\n'
+    for size in 16x16 22x22 24x24 32x32 48x48 64x64; do
+        n="${size%x*}"
+        printf '\n[%s/places]\nContext=Places\nSize=%s\nType=Fixed\n' "$size" "$n"
+    done
+} > "$OVERLAY_DIR/index.theme"
+
+# ── create symlinks for folder icons ────────────────────────────────────────
+# Replicate papirus-folders' change_color() across our overlay: for every
+# colored file `folder-<color>-*.svg` / `user-<color>-*.svg` in the system
+# theme, create the matching uncolored symlink in the overlay.
+#   folder-yellow.svg           -> folder.svg
+#   folder-yellow-documents.svg -> folder-documents.svg
+#   user-yellow-desktop.svg     -> user-desktop.svg
+# Some Papirus names are themselves aliases (e.g. folder-green-downloads.svg ->
+# folder-green-download.svg), so follow every existing path rather than skipping
+# symlinks. Targets are absolute so they resolve regardless of the CWD.
+
+for size in 16x16 22x22 24x24 32x32 48x48 64x64; do
+    overlay_places="$OVERLAY_DIR/${size}/places"
+    system_places="$THEME_DIR_SYSTEM/${size}/places"
+
+    mkdir -p "$overlay_places"
+    [[ -d "$system_places" ]] || continue
+
+    for prefix in "folder-${COLOR}" "user-${COLOR}"; do
+        for file_path in "$system_places/$prefix"{-*,}.svg; do
+            [[ -e "$file_path" ]] || continue
+
+            file_name="${file_path##*/}"
+            uncolored="${file_name/-${COLOR}/}"  # strip the color segment
+            ln -sf "$file_path" "$overlay_places/$uncolored"
+        done
+    done
+done
+
+# ── refresh GTK icon cache ──────────────────────────────────────────────────
+# Invalidate the cache so GTK picks up the new overlay theme immediately.
+if command -v gtk-update-icon-cache &>/dev/null; then
+    gtk-update-icon-cache -qf "$OVERLAY_DIR" 2>/dev/null || true
+fi
+
+# ── done ─────────────────────────────────────────────────────────────────────
+echo "Papirus folder color set to ${COLOR} for ${MODE} mode (overlay: ${THEME_NAME})"
+exit 0

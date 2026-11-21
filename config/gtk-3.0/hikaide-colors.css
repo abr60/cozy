@@ -1,0 +1,30 @@
+/*
+* Hikaide colors generated with Matugen
+* Maps Material Design roles to Hikaide @define-color variables
+*/
+
+/* Base / surface */
+@define-color haku_base #fff8f8;
+@define-color haku_sidebar #fff0f5;
+@define-color haku_surface #fff8f8;
+@define-color haku_hover alpha(#21191d, 0.15);
+@define-color haku_active alpha(#21191d, 0.25);
+@define-color haku_selection #933c73;
+@define-color haku_selection_backdrop alpha(#933c73, 0.12);
+
+/* Text / foreground */
+@define-color haku_fg #21191d;
+@define-color haku_secondary #52424a;
+@define-color haku_disabled #21191d;
+@define-color haku_focus #f4e4e9;
+
+/* Interaction states */
+@define-color haku_hover #ffffff;
+@define-color haku_view_hover alpha(#ffffff, 0.07);
+@define-color haku_view_selected alpha(#933c73, 0.11);
+@define-color haku_view_backdrop alpha(#fff0f5, 0.08);
+
+/* Reserved (never decorative) */
+@define-color error_color #e09b9b;
+@define-color warning_color #d6bd8b;
+@define-color success_color #a7c4a0;

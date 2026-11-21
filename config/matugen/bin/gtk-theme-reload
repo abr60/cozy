@@ -11,6 +11,7 @@ set -uo pipefail
 
 STATE_DIR="$HOME/.local/state/Cozy"
 CURRENT_WP_LINK="$STATE_DIR/current-wallpaper"
+SCRIPTS_DIR="$HOME/.config/matugen/bin"
 
 wallpaper_path="${1:-}"
 MODE="${2:-}"
@@ -89,11 +90,23 @@ if [[ -n "$IM_CMD" && -f "$wallpaper_path" ]]; then
     fi
 fi
 
-# ─── Apply Papirus folder color ───────────────────────────────────────────────
-papirus-folders -C "$PAPIRUS_FOLDER_COLOR" --theme Papirus 2>/dev/null
+# ─── Apply Papirus folder color (user-local overlay, no root/AUR needed) ──────
+"$SCRIPTS_DIR/cozy-papirus-folders" "$PAPIRUS_FOLDER_COLOR" "$MODE" 2>/dev/null || true
 
-# ─── Set Papirus icon theme ───────────────────────────────────────────────────
-[[ "$MODE" == "dark" ]] && ICON_THEME="Papirus-Dark" || ICON_THEME="Papirus"
+# ─── Set Papirus icon theme (via cozy-papirus-folders overlay) ────────────────
+# overlay names: CozyPapirus-Dark-<color> (dark) or CozyPapirus-<color> (light)
+if [[ "$MODE" == "dark" ]]; then
+    ICON_THEME="CozyPapirus-Dark-${PAPIRUS_FOLDER_COLOR}"
+    FALLBACK_THEME="Papirus-Dark"
+else
+    ICON_THEME="CozyPapirus-${PAPIRUS_FOLDER_COLOR}"
+    FALLBACK_THEME="Papirus"
+fi
+
+# Never point gsettings at a missing overlay: fall back to the stock theme.
+if [[ ! -d "$HOME/.local/share/icons/$ICON_THEME" ]]; then
+    ICON_THEME="$FALLBACK_THEME"
+fi
 gsettings set org.gnome.desktop.interface icon-theme "$ICON_THEME" 2>/dev/null
 
 # ─── Final D-Bus Kick-start for GTK4/Libadwaita apps (Nautilus) ──────────────

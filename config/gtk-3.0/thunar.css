@@ -1,4 +1,4 @@
-/* Thunar theme */
+/* Thunar theme — colors driven by Hikaide @define-color vars */
 
 /* =============================================================================
    Global Resets
@@ -14,11 +14,11 @@
    ============================================================================= */
 
 .thunar.background {
-    background: #fff8f0;
+    background: @haku_base;
 }
 
 .thunar .titlebar {
-    background: inherit;
+    background: @haku_base;
 }
 
 .thunar .titlebutton.close {
@@ -45,24 +45,12 @@
     padding: 10px;
     margin: 10px 15px 0 0;
     border-radius: 15px;
-    background-color: #faf3e8;
-    animation: fading 400ms ease forwards;
-    opacity: 0;
-    animation-delay: 250ms;
-}
-
-.thunar .frame.standard-view .view:not(.rubberband),
-.thunar .frame.standard-view .view *:not(.rubberband) {
-    background-color: transparent;
-}
-
-.thunar .frame.standard-view .view *:selected {
-    color: #897324;
+    background-color: @haku_base;
 }
 
 .thunar .rubberband {
-    background-color: alpha(#897324, 0.15);
-    border: 1px solid alpha(#897324, 0.15);
+    background-color: alpha(@haku_secondary, 0.18);
+    border: 1px solid alpha(@haku_secondary, 0.6);
 }
 
 
@@ -82,41 +70,47 @@
 }
 
 .thunar header.top tabs .reorderable-page:hover {
-    background-color: alpha(#897324, 0.08);
+    background-color: alpha(@haku_secondary, 0.08);
 
 }
 .thunar header.top tabs .reorderable-page:checked {
-    color: #897324;
-    background-color: alpha(#897324, 0.15);
+    color: @haku_selection;
+    background-color: alpha(@haku_selection, 0.15);
 
 }
 
 /* =============================================================================
-   Sidebar Navigation
+   Sidebar Navigation (compact)
    ============================================================================= */
 
-.thunar .sidebar {
-    padding: 0 20px;
+.thunar .sidebar.frame.shortcuts-pane {
+    padding: 2px 6px 2px 4px;
     background: none;
-    animation: fading 600ms ease forwards;
-    animation-delay: 100ms;
-    opacity: 0;
+    /* animation/fade removed for instant collapse/expand */
 }
 
-.thunar .sidebar .view {
-    padding: 8px 4px;
-    border-radius: 10px;
+.thunar .sidebar.frame.shortcuts-pane .view {
+    padding: 2px 0;
+    border-radius: 6px;
     background: none;
-    transition: all ease 300ms;
+    font-size: 10.5pt;
+    transition: all ease 150ms;
 }
 
-.thunar .sidebar .view:hover {
-    background: alpha(#1e1b15, 0.1);
+.thunar .sidebar.frame.shortcuts-pane .view:hover {
+    background: alpha(@haku_base, 0.04);
 }
 
-.thunar .sidebar .view:selected {
-    background: alpha(#897324, 0.15);
-    color: #897324;
+.thunar .sidebar.frame.shortcuts-pane .view:selected {
+    background: alpha(@haku_selection, 0.1);
+    color: @haku_selection;
+    border-radius: 6px;
+}
+
+/* Tighten group divider height between Places/Devices/Network */
+.thunar .sidebar.frame.shortcuts-pane .separator {
+    min-height: 1px;
+    margin: 2px 0;
 }
 
 /* =============================================================================
@@ -132,21 +126,21 @@
 .thunar .location-button.toggle:checked,
 .thunar .path-bar-button.toggle:checked {
     padding: 8px 25px;
-    background: alpha(#897324, 0.15);
-    color: #897324;
+    background: alpha(@haku_selection, 0.15);
+    color: @haku_selection;
     box-shadow: none;
 }
 
 .thunar .location-button.path-bar-button:not(:checked) {
-    background-color: #faf3e8;
+    background-color: @haku_base;
 }
 
 .thunar .location-button.path-bar-button:not(:checked):hover {
-    background: alpha(#897324, 0.08);
-    color: alpha(#897324, 0.8);
+    background: alpha(@haku_secondary, 0.08);
+    color: alpha(@haku_secondary, 0.8);
 }
 
-.thunar .location-button.toggle+.location-button.toggle:checked {
+.thunar .location.button.toggle+.location.button.toggle:checked {
     margin-left: 0px;
     padding: 0 25px;
 }
@@ -160,7 +154,7 @@
    ============================================================================= */
 
 .thunar button.toggle:checked {
-    color: #897324;
+    color: @haku_selection;
 }
 
 .thunar .image-button {
@@ -174,11 +168,11 @@
    ============================================================================= */
 
 .thunar statusbar {
-    background-color: #faf3e8;
+    background-color: @haku_base;
     border-radius: 15px;
     padding: 10px 10px;
     margin: 15px 5px 15px -10px;
-    color: #1e1b15;
+    color: @haku_fg;
 }
 
 
@@ -195,8 +189,4 @@
    Animation
    ============================================================================= */
 
-@keyframes fading {
-    to {
-        opacity: 1;
-    }
-}
+

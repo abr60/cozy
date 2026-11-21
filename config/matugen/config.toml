@@ -40,6 +40,16 @@ input_path  = "~/.config/matugen/templates/kitty.conf"
 output_path = "~/.config/kitty/colors.conf"
 post_hook   = "pkill -USR1 kitty"
 
+[templates.foot]
+input_path  = "~/.config/matugen/templates/foot-colors.ini"
+output_path = "~/.config/matugen/generated/foot-colors.ini"
+post_hook   = "pkill -SIGUSR1 foot || true; ln -nfs \"$HOME/.config/matugen/generated/foot-colors.ini\" \"$HOME/.config/foot/foot-colors.ini\"; touch \"$HOME/.config/foot/foot.ini\""
+
+[templates.nvim]
+input_path  = "~/.config/matugen/templates/nvim-colors.vim"
+output_path = "~/.config/nvim/colors/matugen.vim"
+post_hook   = "pkill -SIGUSR1 nvim || true"
+
 # 4. Apps
 [templates.cava]
 input_path  = "~/.config/matugen/templates/cava.ini"
@@ -108,3 +118,8 @@ post_hook = 'pgrep -x spotify >/dev/null && spicetify watch -s & sleep 0.5 && pk
 
 #[templates.wlogout]
 #[templates.mode-flag]
+# 6. Hikaide bridge
+[templates.gtk-hikaide]
+input_path  = "~/.config/matugen/templates/gtk-hikaide/hikaide-colors.css"
+output_path = "~/.config/gtk-3.0/hikaide-colors.css"
+post_hook   = "echo Generated hikaide colors for {{mode}}"
