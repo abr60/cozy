@@ -44,7 +44,7 @@ fi
 # ─── Symlink ~/zshrc → Cozy/zshrc ──────────────────────────────────────────
 if [[ -d "$ZSH_DOTS_DIR" ]]; then
     remove_path "$ZSHRC_LINK"
-    ln -sf "$ZSH_DOTS_DIR" "$ZSHRC_LINK"
+    ln -sfn --relative "$ZSH_DOTS_DIR" "$ZSHRC_LINK"
     ok "Symlinked ~/zshrc → $ZSH_DOTS_DIR"
 else
     warn "zshrc folder not found at $ZSH_DOTS_DIR — skipping"
@@ -53,7 +53,7 @@ fi
 # ─── Symlink ~/.zshrc → ~/zshrc/rc ───────────────────────────────────────────
 if [[ -f "$ZSHRC_LINK/rc" ]]; then
     [[ -f "$HOME/.zshrc" && ! -L "$HOME/.zshrc" ]] && rm "$HOME/.zshrc"
-    ln -sf "$ZSHRC_LINK/rc" "$HOME/.zshrc"
+    ln -sfn --relative "$ZSHRC_LINK/rc" "$HOME/.zshrc"
     ok "Symlinked ~/.zshrc → ~/zshrc/rc"
 else
     warn "rc file not found at $ZSHRC_LINK/rc — skipping"

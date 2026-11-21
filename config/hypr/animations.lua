@@ -1,1 +1,1 @@
-/home/abr/.config/hypr/animations/disabled.lua
+animations/disabled.lua

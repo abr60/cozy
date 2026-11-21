@@ -9,7 +9,7 @@ PartOf=graphical-session.target
 Type=simple
 # KillMode=process ensures the Python process survives the oneshot check
 KillMode=process
-ExecStart=/home/abr/.local/share/Cozy/bin/keyboard-idle
+ExecStart=%h/.local/share/Cozy/bin/keyboard-idle
 Restart=on-failure
 RestartSec=5
 

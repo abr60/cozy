@@ -3,11 +3,16 @@
 # lib/backup.sh — Backup and rollback system for Cozy install scripts
 # =============================================================================
 
-BACKUP_ROOT="$HOME/.local/share/cozy-backups"
+BACKUP_ROOT="$HOME/.local/state/Cozy/backups"
 _BACKUP_SESSION_FILE="$HOME/.local/share/Cozy/.cozy-backup-session"
 
 init_backup_session() {
     local session="backup_$(date +%Y%m%d_%H%M%S)"
+    local legacy_backup_root="$HOME/.local/share/cozy-backups"
+    if [[ -d "$legacy_backup_root" && ! -e "$BACKUP_ROOT" ]]; then
+        mkdir -p "$(dirname "$BACKUP_ROOT")"
+        mv "$legacy_backup_root" "$BACKUP_ROOT"
+    fi
     BACKUP_DIR="$BACKUP_ROOT/$session"
     RESTORE_FILE="$BACKUP_DIR/RESTORE.txt"
 

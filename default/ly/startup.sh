@@ -23,7 +23,7 @@ fi
 
 # Regenerate the rain animation for the actual console resolution so it always
 # fills the screen (a .dur file is a fixed-size frame, unlike built-in animations).
-RAIN_GEN=/home/abr/.local/share/Cozy/default/ly/generate-rain.py
+RAIN_GEN="${COZY_PATH:-$HOME/.local/share/Cozy}/default/ly/generate-rain.py"
 if [ -x "$RAIN_GEN" ]; then
     size=$(stty size 2>/dev/null </dev/tty)
     [ -n "$size" ] || size=$(stty size 2>/dev/null </dev/tty2)

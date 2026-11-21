@@ -66,12 +66,15 @@ mkdir -p "$(dirname "$COZY_PATH")"
 if [[ -d "$COZY_PATH" && ! -L "$COZY_PATH" ]]; then
     die "$COZY_PATH exists as a directory; move it before linking Cozy"
 fi
-ln -sfnT "$DOTS_DIR" "$COZY_PATH"
+if [[ "$COZY_PATH" != "$DOTS_DIR" ]]; then
+    # Relative target keeps the link valid if the home directory moves.
+    ln -sfnT --relative "$DOTS_DIR" "$COZY_PATH"
+fi
 if [[ "$LEGACY_COZY_DIR" != "$COZY_PATH" ]]; then
     if [[ -d "$LEGACY_COZY_DIR" && ! -L "$LEGACY_COZY_DIR" ]]; then
         warn "Leaving existing Cozy directory untouched: $LEGACY_COZY_DIR"
     else
-        ln -sfnT "$DOTS_DIR" "$LEGACY_COZY_DIR"
+        ln -sfnT --relative "$DOTS_DIR" "$LEGACY_COZY_DIR"
     fi
 fi
 mkdir -p "$HOME/.local/state/Cozy/toggles/hypr"

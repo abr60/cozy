@@ -203,6 +203,16 @@ else
     echo " STOW: Config symlinks refreshed" >> "$REPORT_FILE"
 fi
 
+# ── Path portability check ───────────────────────────────────────────────────
+section "Checking Path Portability"
+if bash "$DOTS_DIR/bin/libexec/cozy/maintenance/check-paths" >> "$REPORT_FILE" 2>&1; then
+    ok "Path check passed"
+    echo " PATHS: Clean" >> "$REPORT_FILE"
+else
+    warn "Path check found issues — see $REPORT_FILE"
+    echo " PATHS: Issues found" >> "$REPORT_FILE"
+fi
+
 # ==========================================
 # 8. WALLPAPERS SYNC
 # ==========================================

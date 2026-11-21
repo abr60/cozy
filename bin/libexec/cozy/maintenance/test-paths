@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# cozy:summary=Verify path generation stays portable with a fake HOME.
+# cozy:group=test
+# cozy:name=paths
+
+set -euo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+REPO_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/../../../.." && pwd -P)"
+
+original_user="${USER:-$(basename "$HOME")}"
+fake_home="$(mktemp -d)"
+trap 'rm -rf "$fake_home"' EXIT
+
+export HOME="$fake_home"
+export COZY_PATH="$fake_home/.local/share/Cozy"
+
+fail() {
+    printf 'FAIL: %s\n' "$*" >&2
+    exit 1
+}
+
+# The GTK bookmarks file is generated from a template that must expand $HOME
+# at install time, never bake in the current username.
+mkdir -p "$HOME/.config/gtk-3.0"
+sed "s|\$HOME|$HOME|g" \
+    "$REPO_ROOT/config/matugen/templates/gtk-3.0/bookmarks" \
+    > "$HOME/.config/gtk-3.0/bookmarks"
+
+grep -Fq -- "$original_user" "$HOME/.config/gtk-3.0/bookmarks" \
+    && fail "generated bookmarks contain the original username: $original_user"
+grep -Fq -- "file://$HOME/" "$HOME/.config/gtk-3.0/bookmarks" \
+    || fail "generated bookmarks do not use the fake HOME"
+
+# Recreate the Cozy symlinks under the fake HOME; every link must be relative
+# to its own location, not to an absolute user-specific path.
+bash "$REPO_ROOT/bin/libexec/cozy/maintenance/relink" >/dev/null
+
+while IFS= read -r -d '' link; do
+    target="$(readlink "$link" 2>/dev/null || true)"
+    [[ "$target" == "$HOME"/* || "$target" == "$fake_home"/* || "$target" == /* ]] \
+        && fail "non-relative symlink: $link -> $target"
+done < <(find "$HOME" -type l -print0)
+
+printf 'Path portability test passed with fake HOME: %s\n' "$fake_home"

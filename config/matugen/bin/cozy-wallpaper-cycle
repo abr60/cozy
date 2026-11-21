@@ -39,7 +39,7 @@ case "$ACTION" in
 esac
 
 NEW_WP="${WALLS[$NEW_IDX]}"
-ln -nsf "$NEW_WP" "$CURRENT_WP_LINK"
+ln -nsf --relative "$NEW_WP" "$CURRENT_WP_LINK"
 
 "$SCRIPTS_DIR/wallpaper-apply" "$CURRENT_WP_LINK" || exit $?
 

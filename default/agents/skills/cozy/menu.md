@@ -14,8 +14,8 @@ bin/menu
 └── go_to_menu           (direct jump: `menu Install`, `menu Setup`, etc.)
 ```
 
-- Edit: `~/Cozy/bin/menu` (922 lines). Add submenus as `show_*_menu()` functions, wire in `show_install_menu` / `go_to_menu` / `show_main_menu`.
+- Edit: `$COZY_PATH/bin/menu` (922 lines). Add submenus as `show_*_menu()` functions, wire in `show_install_menu` / `go_to_menu` / `show_main_menu`.
 - Helpers: `menu()`, `present_terminal()`, `install()`, `open_in_editor()`, `hypr_config_file()`.
-- User extensions: `~/.config/cozy/extensions/menu.sh` (sourced at end of `bin/menu`).
+- User extensions: `~/.config/Cozy/extensions/menu.sh` (sourced at end of `bin/menu`).
 - Install helpers: `bin/webapp-install`, `bin/webapp-remove`, `bin/tui-install`, `bin/pkg-add`, `bin/install-*`, `bin/cozy-voxtype-*`.
 - Webapps: `applications/Webapps/*.desktop` + `applications/icons/*.png` → `~/.local/share/applications/` (via `install/config/applications.sh` + `bin/refresh-applications`).

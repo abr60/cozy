@@ -10,7 +10,7 @@ cleancozy() {
         # 1️⃣ Ensure paccache exists 
         if ! command -v paccache >/dev/null 2>&1; then 
             echo "Installing pacman-contrib (safe cache management)..." 
-            sudo pacman -Sy --needed pacman-contrib 
+            sudo pacman -S --needed pacman-contrib
         fi 
         echo -e "\n📦 Trimming pacman cache (keeping last 2 versions)..." 
         sudo paccache -r -k 2 
@@ -78,9 +78,21 @@ cleancozy() {
             flatpak uninstall --unused -y 
         fi 
 
-        # 🔟 Broken symlink sweep 
-        echo -e "\n🔗 Removing broken symlinks in HOME..." 
-        find "$HOME" -xtype l -delete 2>/dev/null 
+        # 🔟 Broken symlink review (never delete without asking)
+        local broken_links
+        broken_links="$(find "$HOME" -xtype l -print 2>/dev/null)"
+        if [[ -n "$broken_links" ]]; then
+            echo -e "\n🔗 Broken symlinks found:" | tee -a "$LOGFILE"
+            echo "$broken_links" | tee -a "$LOGFILE"
+            read "confirm?Delete these broken symlinks? (y/N): " < /dev/tty
+            if [[ "$confirm" == "y" ]]; then
+                echo "$broken_links" | xargs -r rm -f --
+            else
+                echo "Skipped broken symlinks."
+            fi
+        else
+            echo "No broken symlinks found."
+        fi
 
         # Final Report 
         echo -e "\n📊 Disk usage AFTER:" 

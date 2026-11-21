@@ -4,9 +4,9 @@
 #               then delegate all color/theme work to cozy-set-mode.
 #
 # State files:
-#   ~/.local/state/cozy/current-theme       ← active theme name
-#   ~/.local/state/cozy/current-wallpaper   ← symlink to active wallpaper
-#   ~/.local/state/cozy/current-mode        ← "light" or "dark"
+#   ~/.local/state/Cozy/current-theme       ← active theme name
+#   ~/.local/state/Cozy/current-wallpaper   ← symlink to active wallpaper
+#   ~/.local/state/Cozy/current-mode        ← "light" or "dark"
 # =============================================================================
 
 set -euo pipefail

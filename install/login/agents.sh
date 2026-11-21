@@ -51,7 +51,7 @@ for target in "${target_dirs[@]}"; do
     for skill in "${skills[@]}"; do
         src="$SKILLS_SRC/$skill"
         dest="$target/$skill"
-        ln -sfn "$src" "$dest"
+        ln -sfn --relative "$src" "$dest"
         ok "Linked $skill → $dest"
     done
 done

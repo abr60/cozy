@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # lib/rollback.sh — Restore files from a Cozy backup session
-# Usage: bash ~/.local/share/cozy-backups/<session>/rollback.sh
-#    or: bash ~/Cozy/install/lib/rollback.sh [backup-dir]
+# Usage: bash ~/.local/state/Cozy/backups/<session>/rollback.sh
+#    or: bash $COZY_PATH/install/lib/rollback.sh [backup-dir]
 # =============================================================================
 
 set -e
@@ -18,7 +18,11 @@ warn() { echo -e "${YELLOW} !${NC} $1"; }
 err()  { echo -e "${RED} ✗${NC} $1"; }
 msg()  { echo -e "${BLUE}==>${NC} $1"; }
 
-BACKUP_ROOT="$HOME/.local/share/cozy-backups"
+BACKUP_ROOT="$HOME/.local/state/Cozy/backups"
+LEGACY_BACKUP_ROOT="$HOME/.local/share/cozy-backups"
+if [[ ! -d "$BACKUP_ROOT" && -d "$LEGACY_BACKUP_ROOT" ]]; then
+    BACKUP_ROOT="$LEGACY_BACKUP_ROOT"
+fi
 
 if [[ -n "${1:-}" ]]; then
     BACKUP_DIR="$1"

@@ -13,7 +13,7 @@ fi
 
 # ─── XDG wallpaper symlink ────────────────────────────────────────────────────
 mkdir -p "$HOME/.local/share"
-ln -sf "$wallpaper_path" "$HOME/.local/share/bg"
+ln -sfn --relative "$wallpaper_path" "$HOME/.local/share/bg"
 
 # ─── Completion notification ──────────────────────────────────────────────────
 if command -v notify-send >/dev/null 2>&1; then

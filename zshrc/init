@@ -1,22 +1,19 @@
 # --- INITIALIZATION ---
 
-# Visual Intro (Fortune/Cowsay)
-#if [[ $(tty) == *"pts"* ]]; then
- # fortune | cowsay -r
-#fi
+# Optional visual intro (fortune | cowsay -r) can go here for new terminals.
 
-# External Tool Inits
-if command -v starship &>/dev/null; then
-  eval "$(starship init zsh)"
+# External tool inits — each guarded so a missing/old tool can't break the shell
+if command -v zoxide >/dev/null 2>&1; then
+  _zshrc_tool_init="$(zoxide init zsh 2>/dev/null)" && eval "$_zshrc_tool_init"
+  unset _zshrc_tool_init
 fi
 
-if command -v zoxide &>/dev/null; then
-  eval "$(zoxide init zsh)"
+if command -v fzf >/dev/null 2>&1; then
+  _zshrc_tool_init="$(fzf --zsh 2>/dev/null)" && eval "$_zshrc_tool_init"
+  unset _zshrc_tool_init
 fi
 
-if command -v fzf &>/dev/null; then
-  source <(fzf --zsh)
+# Hide Waydroid launcher from app menus (only when Waydroid is present)
+if command -v waydroid >/dev/null 2>&1; then
+  hide_waydroid >/dev/null 2>&1 &!
 fi
-
-# Run Waydroid Hider in background
-hide_waydroid >/dev/null 2>&1 &!

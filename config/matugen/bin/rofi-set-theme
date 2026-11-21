@@ -135,7 +135,7 @@ if [[ ${#WALLS[@]} -eq 0 ]]; then
 fi
 
 RANDOM_WALL="${WALLS[$RANDOM % ${#WALLS[@]}]}"
-ln -nsf "$RANDOM_WALL" "$STATE_DIR/current-wallpaper"
+ln -nsf --relative "$RANDOM_WALL" "$STATE_DIR/current-wallpaper"
 
 "$SCRIPTS_DIR/wallpaper-apply" "$STATE_DIR/current-wallpaper" || exit $?
 

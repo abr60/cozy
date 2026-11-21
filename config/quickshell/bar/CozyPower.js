@@ -1,6 +1,6 @@
 .pragma library
 
-var cozyPathCmd = "PATH=\"$HOME/.local/share/cozy/bin:$PATH\"; export PATH; "
+var cozyPathCmd = "PATH=\"${COZY_PATH:-$HOME/.local/share/Cozy}/bin:$PATH\"; export PATH; "
 
 // Prefer cozy-shell's display resolver when present. The fallback matches
 // brightness-display's device preference, with /sys-anchored globs so

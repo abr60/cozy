@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# cozy:summary=Recreate Cozy symlinks with relative targets after a home move.
+# cozy:group=relink
+
+set -euo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+REPO_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/../../../.." && pwd -P)"
+COZY_PATH="${COZY_PATH:-$HOME/.local/share/Cozy}"
+
+relink_repo() {
+    local dest="$1"
+    if [[ "$dest" == "$REPO_ROOT" ]]; then
+        return
+    fi
+    if [[ -d "$dest" && ! -L "$dest" ]]; then
+        printf 'Skipping real directory: %s\n' "$dest" >&2
+        return
+    fi
+    mkdir -p "$(dirname "$dest")"
+    ln -sfnT --relative "$REPO_ROOT" "$dest"
+    printf 'Linked %s -> %s\n' "$dest" "$REPO_ROOT"
+}
+
+relink_repo "$COZY_PATH"
+
+LEGACY_PATH="$HOME/.local/share/Cozy"
+if [[ "$LEGACY_PATH" != "$COZY_PATH" ]]; then
+    relink_repo "$LEGACY_PATH"
+fi
+
+# Zsh dotfiles
+if [[ -d "$COZY_PATH/zshrc" ]]; then
+    ln -sfn --relative "$COZY_PATH/zshrc" "$HOME/zshrc"
+    ln -sfn --relative "$COZY_PATH/zshrc/rc" "$HOME/.zshrc"
+    printf 'Relinked zsh dotfiles\n'
+fi
+
+# Current wallpaper and the generic wallpaper link
+STATE_DIR="$HOME/.local/state/Cozy"
+WALL_LINK="$STATE_DIR/current-wallpaper"
+if [[ -e "$WALL_LINK" ]]; then
+    REAL_WALL="$(readlink -f "$WALL_LINK" 2>/dev/null || true)"
+    if [[ -n "$REAL_WALL" && -f "$REAL_WALL" ]]; then
+        mkdir -p "$HOME/.local/share"
+        ln -sfn --relative "$REAL_WALL" "$WALL_LINK"
+        ln -sfn --relative "$REAL_WALL" "$HOME/.local/share/bg"
+        printf 'Relinked wallpaper links -> %s\n' "$REAL_WALL"
+    fi
+fi
+
+# Agent skill symlinks
+SKILLS_SRC="$COZY_PATH/default/agents/skills"
+if [[ -d "$SKILLS_SRC" ]]; then
+    target_dirs=(
+        "$HOME/.agents/skills"
+        "$HOME/.claude/skills"
+        "$HOME/.codex/skills"
+        "$HOME/.pi/agent/skills"
+        "$HOME/.gemini/config/skills"
+        "$HOME/.hermes/skills"
+        "$HOME/.config/opencode/skills"
+    )
+    for profile in "$HOME"/.hermes/profiles/*/; do
+        [[ -d "$profile" ]] && target_dirs+=("${profile%/}/skills")
+    done
+
+    for target in "${target_dirs[@]}"; do
+        mkdir -p "$target"
+        for skill in "$SKILLS_SRC"/*/; do
+            [[ -d "$skill" ]] || continue
+            name="$(basename "$skill")"
+            ln -sfn --relative "$skill" "$target/$name"
+        done
+    done
+    printf 'Relinked agent skills\n'
+fi
+
+printf 'Cozy symlinks are now relative to their install location.\n'

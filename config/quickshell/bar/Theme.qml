@@ -10,7 +10,7 @@ Item {
     signal reactorTest(string kind, string arg)
 
     property string cozyCurrentRoot: Quickshell.env("HOME") + "/.config/Cozy/current"
-    property string cozyInstallRoot: Quickshell.env("HOME") + "/.local/share/Cozy"
+    property string cozyInstallRoot: Quickshell.env("COZY_PATH") || (Quickshell.env("HOME") + "/.local/share/Cozy")
     property bool cozyCurrentRootResolved: false
     readonly property string themeNamePath: cozyCurrentRoot + "/theme.name"
     readonly property string colorsPath: Quickshell.env("HOME") + "/.local/state/Cozy/qs-colors.toml"
@@ -1391,8 +1391,8 @@ Item {
     // ── wifi/bluetooth settings launchers (Cozy way, via uwsm-app) ──
     // iwd (Cozy 3.8.x) → impala/bluetui through cozy-launch-*; if NetworkManager
     // is the active backend (Cozy 4.0) → nmtui instead.
-    readonly property string launchWifiCmd: "uwsm app -- ~/Cozy/bin/launch-wifi"
-    readonly property string launchBtCmd:   "uwsm app -- ~/Cozy/bin/launch-bluetooth"
+    readonly property string launchWifiCmd: "uwsm app -- " + cozyInstallRoot + "/bin/launch-wifi"
+    readonly property string launchBtCmd:   "uwsm app -- " + cozyInstallRoot + "/bin/launch-bluetooth"
     property bool modPower:      false   // default off (toggle in ControlPanel)
     property bool modBluetooth:  false   // default off (toggle in ControlPanel)
     property bool modBrightness: true
@@ -2229,10 +2229,11 @@ Item {
     Process {
         id: cozyCurrentRootProbe
         command: ["bash", "-c",
+            "install=\"${COZY_PATH:-$HOME/.local/share/Cozy}\"; " +
             "state=\"$HOME/.local/state/Cozy/current\"; legacy=\"$HOME/.config/Cozy/current\"; " +
             "if command -v cozy-shell >/dev/null 2>&1 && [ -d \"$state\" ] && [ -d /usr/share/Cozy ]; then printf '%s\\t%s\\n' \"$state\" /usr/share/Cozy; " +
-            "elif [ -d \"$legacy\" ]; then printf '%s\\t%s\\n' \"$legacy\" \"$HOME/.local/share/Cozy\"; " +
-            "else printf '%s\\t%s\\n' \"$legacy\" \"$HOME/.local/share/Cozy\"; fi"]
+            "elif [ -d \"$legacy\" ]; then printf '%s\\t%s\\n' \"$legacy\" \"$install\"; " +
+            "else printf '%s\\t%s\\n' \"$legacy\" \"$install\"; fi"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {

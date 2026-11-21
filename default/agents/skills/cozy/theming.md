@@ -1,6 +1,6 @@
 # Theming (Cozy)
 
-- Themes live in `~/Cozy/themes/` and `~/.config/Cozy/themes/` / `~/.config/cozy/themes/` (user overrides).
+- Themes live in `$COZY_PATH/themes/` and `~/.config/Cozy/themes/` (user overrides).
 - Commands: `theme-set <name>`, `theme-list`, `theme-install`, `theme-bg-set`, `theme-bg-next`, `font-set`, `font-list`.
 - `bin/theme-*` and `bin/theme-bg-*` are the source; `bin/cozy` dispatches `cozy theme ...`.
 - Plymouth theme: `default/plymouth/cozy/` → `/usr/share/plymouth/themes/cozy/` (installed by `install/login/plymouth.sh`).

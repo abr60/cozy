@@ -1,6 +1,10 @@
-# Order matters: Envs first, then Core/OMZ, then Aliases/Functions, then Init
-source ~/zshrc/envs
-source ~/zshrc/cleancozy
-source ~/zshrc/aliases
-source ~/zshrc/functions
-source ~/zshrc/init
+# Order matters: Envs first (Oh My Zsh), then Prompt, then Aliases/Functions, then Init
+# cleancozy is loaded on demand by the lazy loader in functions/.
+for _zshrc_part in envs prompt aliases functions init; do
+  if [[ -r "$HOME/zshrc/$_zshrc_part" ]]; then
+    source "$HOME/zshrc/$_zshrc_part"
+  else
+    print -u2 -- "zsh: missing ~/zshrc/$_zshrc_part"
+  fi
+done
+unset _zshrc_part

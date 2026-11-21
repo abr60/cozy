@@ -4,7 +4,7 @@ description: >
   REQUIRED for the user's Cozy Arch Linux + Hyprland dotfiles and system config.
   Use when editing ~/.config/hypr/, ~/.config/waybar/, ~/.config/rofi/,
   or any file in ~/.config/ on a Cozy system, or when working inside
-  the Cozy repo at ~/Cozy / ~/.local/share/Cozy.
+  the Cozy repo at $COZY_PATH / ~/.local/share/Cozy.
   Triggers: Hyprland, window rules, animations, keybindings, monitors,
   gaps, borders, blur, opacity, Waybar, Rofi menu, themes, background,
   night light, idle, lock screen, screenshots, reminders, layer rules,
@@ -16,7 +16,7 @@ description: >
 
 Manage **Cozy** — the user's personal Arch Linux + Hyprland setup and dotfiles.
 
-Cozy repo lives at `~/Cozy` (`/home/$USER/Cozy`) and is symlinked to `~/.local/share/Cozy` (`$COZY_DIR`) during setup. That symlink is the **source of truth** for all scripts (`$COZY_DIR/default/`, `$COZY_DIR/config/`, `$COZY_DIR/bin/`, `$COZY_DIR/install/`).
+Cozy is exposed at `$COZY_PATH` (default `~/.local/share/Cozy`, also exported as `$COZY_DIR`) during setup. That path is the **source of truth** for all scripts (`$COZY_PATH/default/`, `$COZY_PATH/config/`, `$COZY_PATH/bin/`, `$COZY_PATH/install/`).
 
 > `~/.agents/skills/cozy` is a **symlink** to `~/.local/share/Cozy/default/agents/skills/cozy` (also linked into `~/.claude/skills/`, `~/.codex/skills/`, `~/.pi/agent/skills/`, `~/.gemini/config/skills/`, `~/.hermes/skills/`, and `~/.config/opencode/skills/`).
 
@@ -26,15 +26,15 @@ Cozy repo lives at `~/Cozy` (`/home/$USER/Cozy`) and is symlinked to `~/.local/s
 
 - Editing ANY file in `~/.config/hypr/` (hyprland.lua, bindings.lua, monitors.lua, input.lua, looknfeel.lua, autostart.lua, hypridle/hyprlock/hyprsunset configs)
 - Editing `~/.config/waybar/` (bar layout, modules)
-- Editing `~/.config/rofi/` or the Cozy menu (`~/Cozy/bin/menu`)
+- Editing `~/.config/rofi/` or the Cozy menu (`$COZY_PATH/bin/menu`)
 - Editing ANY file in `~/.config/` on a Cozy system
 - Window behavior, animations, opacity, blur, gaps, borders, workspaces
 - Themes, backgrounds, fonts, appearance (`bin/theme-*`, `bin/theme-bg-*`, `bin/font-*`)
 - Boot stack: Limine (`/boot/limine.conf`), Plymouth, LUKS (`/etc/kernel/cmdline`, `/etc/mkinitcpio.conf.d/`)
 - User-facing `cozy`/`cozy` commands (`cozy theme ...`, `cozy refresh ...`, etc.)
-- Working inside the Cozy repo itself (`~/Cozy/setup.sh`, `update.sh`, `install/`, `bin/`, `default/`, `config/`, `applications/`)
+- Working inside the Cozy repo itself (`$COZY_PATH/setup.sh`, `update.sh`, `install/`, `bin/`, `default/`, `config/`, `applications/`)
 
-**If you're about to edit a config file in `~/.config/` or touch `~/Cozy/`, STOP and use this skill first.**
+**If you're about to edit a config file in `~/.config/` or touch `$COZY_PATH/`, STOP and use this skill first.**
 
 ## Topic Guides
 
@@ -49,10 +49,10 @@ Deeper instructions live next to this file. Read the matching guide before start
 
 ## Critical Safety Rules
 
-**For end-user customization, NEVER modify `/usr/share/Cozy/` or the installed `~/.local/share/Cozy` copy directly** — edit the repo at `~/Cozy/` and re-run `install/` scripts or `update.sh`. Reading is always safe.
+**For end-user customization, NEVER modify `/usr/share/Cozy/` or the installed `~/.local/share/Cozy` copy directly** — edit the repo at `$COZY_PATH/` and re-run `install/` scripts or `update.sh`. Reading is always safe.
 
 ```
-~/Cozy/                        # EDIT HERE (git repo, then update.sh)
+$COZY_PATH/                        # EDIT HERE (git repo, then update.sh)
 ├── bin/                         # Commands (cozy-*, cozy-*, menu, webapp-*, theme-*)
 ├── config/                      # Dotfiles deployed via stow (hypr, waybar, rofi, etc.)
 ├── default/                     # System defaults (limine/limine.conf, agents/skills/*)
@@ -64,9 +64,9 @@ Deeper instructions live next to this file. Read the matching guide before start
 ```
 
 **Safe edit locations:**
-- `~/Cozy/config/<app>/` — dotfiles (stowed to `~/.config/`)
-- `~/Cozy/default/agents/skills/cozy/` — this skill itself
-- `~/Cozy/bin/menu` — Rofi menu structure
+- `$COZY_PATH/config/<app>/` — dotfiles (stowed to `~/.config/`)
+- `$COZY_PATH/default/agents/skills/cozy/` — this skill itself
+- `$COZY_PATH/bin/menu` — Rofi menu structure
 - `~/.config/` — live user config (overwritten by `update.sh` re-apply, so prefer editing the repo)
 
 ## Privilege Escalation
@@ -95,7 +95,7 @@ cozy commands              # list every documented command
 cozy theme --help
 cozy agent --help
 cozy-agent --help
-bin/menu --help 2>/dev/null || cat ~/Cozy/bin/menu | head -20
+bin/menu --help 2>/dev/null || cat $COZY_PATH/bin/menu | head -20
 ```
 
 Prefer `cozy <group> <action>` — it's self-documenting and stable. The underlying `bin/*` binaries remain readable for source.

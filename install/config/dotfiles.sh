@@ -73,6 +73,6 @@ ok "Output directories created"
 ANIM_DIR="$CONFIG_DEST/hypr/animations"
 ANIM_LINK="$CONFIG_DEST/hypr/animations.lua"
 if [[ -d "$ANIM_DIR" && ! -L "$ANIM_LINK" ]]; then
-    ln -sf "$ANIM_DIR/fast.lua" "$ANIM_LINK"
+    ln -sfn --relative "$ANIM_DIR/fast.lua" "$ANIM_LINK"
     ok "Animation symlink set to fast.lua (default)"
 fi

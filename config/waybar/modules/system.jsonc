@@ -37,7 +37,7 @@
     "tooltip": false,
     "on-scroll-down": "brightnessctl s 5%-",
     "on-scroll-up": "brightnessctl s +5%"
-    //"on-click": "cozy-set-mode $([ \"$(cat ~/.local/state/cozy/current-mode)\" = 'dark' ] && echo light || echo dark)"
+    //"on-click": "cozy-set-mode $([ \"$(cat ~/.local/state/Cozy/current-mode)\" = 'dark' ] && echo light || echo dark)"
   },
 
 "power-profiles-daemon": {

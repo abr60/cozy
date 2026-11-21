@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# cozy:summary=Check dotfiles for hardcoded usernames and case-inconsistent paths.
+# cozy:group=check
+# cozy:name=paths
+
+set -uo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+REPO_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/../../../.." && pwd -P)"
+HOME_DIR="${HOME:-$(eval echo ~"$(id -un)")}"
+
+cd "$REPO_ROOT" || exit 1
+
+failures=0
+report() {
+    printf 'PATH CHECK: %s\n' "$*"
+    failures=$((failures + 1))
+}
+
+# Scan tracked files. Patterns are assembled from fragments so this checker
+# does not flag its own source code.
+scan() {
+    local label="$1" pattern="$2"
+    local matches
+    matches="$(git grep -n -I -E "$pattern" -- . || true)"
+    [[ -z "$matches" ]] && return
+
+    while IFS= read -r line; do
+        case "$line" in
+            *'/home/user/'*|*'/home/your-user/'*|*'/home/$USER/'*|*'/home/%h/'*) continue ;;
+        esac
+        report "[$label] $line"
+    done <<< "$matches"
+}
+
+low='cozy'
+tilde='~'
+cap='Cozy'
+
+scan 'absolute home path'    '/home/[[:alnum:]_.-]+/'
+scan 'tilde repo path'       "${tilde}/${cap}"
+scan 'lowercase state dir'   "\\.local/state/${low}/"
+scan 'lowercase share dir'   "\\.local/share/${low}/"
+scan 'lowercase config dir'  "\\.config/${low}/"
+
+# Flag live symlinks that hardcode an absolute home directory.
+link_dirs=(
+    "$HOME_DIR/.config"
+    "$HOME_DIR/.local/share/Cozy"
+    "$HOME_DIR/.local/share/bg"
+    "$HOME_DIR/.local/state/Cozy"
+    "$HOME_DIR/zshrc"
+    "$HOME_DIR/.zshrc"
+    "$HOME_DIR/.agents/skills"
+    "$HOME_DIR/.claude/skills"
+    "$HOME_DIR/.codex/skills"
+    "$HOME_DIR/.pi/agent/skills"
+    "$HOME_DIR/.gemini/config/skills"
+    "$HOME_DIR/.hermes/skills"
+    "$HOME_DIR/.config/opencode/skills"
+)
+
+for dir in "${link_dirs[@]}"; do
+    [[ -e "$dir" ]] || continue
+    while IFS= read -r -d '' link; do
+        target="$(readlink "$link" 2>/dev/null || true)"
+        [[ "$target" == "$HOME_DIR"/* ]] && report "[absolute symlink] $link -> $target"
+    done < <(find "$dir" -maxdepth 5 -type l -print0 2>/dev/null)
+done
+
+if (( failures > 0 )); then
+    printf '%d path issue(s) found.\n' "$failures" >&2
+    exit 1
+fi
+
+printf 'Path check clean.\n'

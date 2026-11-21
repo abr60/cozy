@@ -135,24 +135,24 @@ previous_tier=$(read_tier)
 case "$current_tier" in
 ac)
   powerprofilesctl set performance 2>/dev/null || true
-  target_brightness="5"
+  target_brightness="25"
   ;;
 high)
   powerprofilesctl set balanced 2>/dev/null || true
-  target_brightness="35"
+  target_brightness="15"
   ;;
 mid)
   powerprofilesctl set power-saver 2>/dev/null || true
-  target_brightness="25"
+  target_brightness="10"
   ;;
 low)
   powerprofilesctl set power-saver 2>/dev/null || true
-  target_brightness="10"
+  target_brightness="5"
   ;;
 *)
   # No tier info — default to balanced + 35%
   powerprofilesctl set balanced 2>/dev/null || true
-  target_brightness="35"
+  target_brightness="15"
   ;;
 esac
 

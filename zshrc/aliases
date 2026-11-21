@@ -21,10 +21,36 @@ alias is='fzf --preview="bat --style=numbers --color=always {}"'
 alias nis='nvim $(fzf --preview="bat --color=always {}")'
 
 # --- System ---
-alias batt='sudo batty --tui'
+batt() {
+  if command -v batty >/dev/null 2>&1; then
+    sudo batty --tui
+  else
+    print -u2 -- "batt: batty is not installed"
+    return 1
+  fi
+}
 alias ridle='killall hypridle && hypridle &'
 alias fan-full='echo "level full-speed" | sudo tee /proc/acpi/ibm/fan'
 alias fan-auto='sudo systemctl restart thinkfan'
+
+# --- Git / Tools (curated essentials) ---
+alias g='git'
+alias ga='git add'
+alias gc='git commit'
+alias gcmsg='git commit -m'
+alias gp='git push'
+alias gl='git pull'
+alias gs='git status --short'
+alias gd='git diff'
+alias glog='git log --oneline --graph --decorate'
+alias lg='lazygit'
+alias y='yazi'
+alias bt='btop'
+alias tl='tldr'
+alias pac='sudo pacman -S'
+alias pacu='sudo pacman -Syu'
+alias pacs='pacman -Ss'
+alias pacr='sudo pacman -Rns'
 
 # =============================================================================
 # FUNCTIONS
@@ -34,25 +60,9 @@ alias fan-auto='sudo systemctl restart thinkfan'
 alias walls='cd ~/Walls && git pull --rebase --autostash && git add . && git commit -m "sync: $(date +%Y-%m-%d\ %H:%M)" || true && git push'
 alias way='cd ~/waybar && git add . && git commit -m "sync: $(date)" && git push && cd -'
 alias assets='cd ~/Assets && git add . && git commit -m "sync: $(date +%Y-%m-%d\ %H:%M)" || true && git push && cd -'
-alias stow='stow -v -d ~/Cozy -t ~/.config config'
-alias unstow='stow -Dv -d ~/Cozy -t ~/.config config'
-alias restow='stow -Rv -d ~/Cozy -t ~/.config config'
+alias stow='stow -v -d "$COZY_PATH" -t "$HOME/.config" config'
+alias unstow='stow -Dv -d "$COZY_PATH" -t "$HOME/.config" config'
+alias restow='stow -Rv -d "$COZY_PATH" -t "$HOME/.config" config'
 
-dots() {
-    local msg="${1:-sync: $(date)}"
-    cd ~/dots && \
-    git add . && \
-    git commit -m "$msg" && \
-    git push && \
-    cd -
-}
 
-Cozy() {
-    local msg="${1:-sync: $(date)}"
-    cd ~/Cozy && \
-    git add . && \
-    git commit -m "$msg" && \
-    git push && \
-    cd -
-}
 

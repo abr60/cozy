@@ -1,10 +1,19 @@
-#### The "Cleanest" Way: Sync the whole folder
+# zshrc layout
 
-Since you are already using a `~/dots` folder, the best way is to move the entire `~/zshrc/` directory into your repo.
+This folder is the source of truth for the interactive shell. It lives in the
+Cozy repo and is linked into place as `~/.zshrc -> ~/zshrc/rc` (where `~/zshrc`
+itself points at `$COZY_PATH/zshrc`).
 
-1. **Move the folder:** `mv ~/zshrc ~/dots/`
-2. **Link it back:** `ln -s ~/dots/zshrc ~/zshrc`
-3. **Update your `dots` function:** Ensure it tracks everything in `~/dots`.
+`rc` sources the parts below in this order — keep the order intact:
 
-Now, any change you make inside `~/zshrc/aliases`, `~/zshrc/functions`, etc., will be detected by your `dots` command because they are physically located inside the git-tracked `~/dots` folder.
+| File | Purpose |
+|------|---------|
+| `envs` | Paths, history options, Oh My Zsh + plugin setup |
+| `prompt` | Theme-aware prompt (uses the terminal palette, no external prompt tool) |
+| `cleancozy` | Maintenance helper — loaded only when you call `cleancozy` |
+| `aliases` | Everyday aliases and repo sync shortcuts |
+| `functions` | `zd`/`zi`, clipboard helpers, `hide_waydroid`, `cozy`, `cleancozy` lazy loader |
+| `init` | Guarded init for zoxide and fzf |
 
+Any part that is missing is reported but does not stop the shell from loading.
+Edit files here, not in `~/.zshrc` (which is only a symlink to `rc`).

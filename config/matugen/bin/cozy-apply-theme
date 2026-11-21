@@ -29,7 +29,7 @@ mapfile -t WALLS < <(
 [[ ${#WALLS[@]} -eq 0 ]] && { notify-send "Cozy" "No wallpapers in '$SELECTED_THEME'"; exit 1; }
 
 RANDOM_WALL="${WALLS[$RANDOM % ${#WALLS[@]}]}"
-ln -nsf "$RANDOM_WALL" "$STATE_DIR/current-wallpaper"
+ln -nsf --relative "$RANDOM_WALL" "$STATE_DIR/current-wallpaper"
 
 "$SCRIPTS_DIR/wallpaper-apply" "$STATE_DIR/current-wallpaper" || exit $?
 

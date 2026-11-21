@@ -28,7 +28,7 @@ for theme_dir in "$THEME_SOURCE"/*/; do
     theme_name=$(basename "$theme_dir")
     theme_link="$THEME_DEST/$theme_name"
     remove_path "$theme_link"
-    ln -s "$theme_dir" "$theme_link"
+    ln -sfn --relative "$theme_dir" "$theme_link"
     ok "Symlinked $theme_name"
     (( found++ )) || true
 done
@@ -47,7 +47,7 @@ for theme_wallpaper_dir in "$WALLPAPERS_BASE"/*/; do
     backgrounds_link="$THEME_DEST/$theme_name/backgrounds"
     remove_path "$backgrounds_link"
     mkdir -p "$THEME_DEST/$theme_name"
-    ln -s "$theme_wallpaper_dir" "$backgrounds_link"
+    ln -sfn --relative "$theme_wallpaper_dir" "$backgrounds_link"
     ok "Wallpapers symlinked for $theme_name"
     (( found++ )) || true
 done

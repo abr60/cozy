@@ -1,13 +1,22 @@
 # --- FUNCTIONS ---
-zi() { cd "$(zoxide query -i)"; }
+zi() {
+  local target
+  target="$(zoxide query -i 2>/dev/null)" || return 1
+  [[ -n "$target" ]] && builtin cd -- "$target"
+}
 
 zd() {
-  if [ $# -eq 0 ]; then 
+  if (( $# == 0 )); then
     builtin cd ~ && return
-  elif [ -d "$1" ]; then 
-    builtin cd "$1"
-  else 
-    z "$@" && printf "\U000F17A9 " && pwd
+  elif [[ -d "$1" ]]; then
+    builtin cd -- "$1"
+  elif command -v zoxide >/dev/null 2>&1; then
+    local target
+    target="$(z "$@" 2>/dev/null)" || return 1
+    [[ -n "$target" ]] && builtin cd -- "$target" && printf "\U000F17A9 " && pwd
+  else
+    print -u2 -- "zd: no such directory: $1"
+    return 1
   fi
 }
 
@@ -22,9 +31,17 @@ hide_waydroid() {
 
 cozy() {
     local msg="${1:-sync: $(date +%Y-%m-%d\ %H:%M)}"
-    cd ~/Cozy && \
+    cd "$COZY_PATH" && \
     git add . && \
     git commit -m "$msg" && \
     git push && \
     cd -
+}
+
+# Load the maintenance helper only when it is actually invoked.
+cleancozy() {
+  local _args=("$@")
+  unfunction cleancozy
+  source "$HOME/zshrc/cleancozy"
+  cleancozy "${_args[@]}"
 }

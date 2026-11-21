@@ -2,7 +2,7 @@
 # =============================================================================
 # cozy-matugen-scheme — Pick or directly apply a matugen color scheme.
 #
-# Writes to: ~/.local/state/cozy/matugen-scheme
+# Writes to: ~/.local/state/Cozy/matugen-scheme
 # Read by:   rofi-set-bg on every wallpaper apply
 #
 # Usage:

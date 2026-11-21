@@ -2,143 +2,33 @@
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
   "display": {
     "separator": "  ",
-    "color": {
-      "keys": "magenta"
-    },
-    "size": {
-      "ndigits": 0,
-      "maxPrefix": "GB"
-    }
+    "color": { "keys": "red", "separator": "black" },
+    "size": { "ndigits": 0, "maxPrefix": "GB" }
   },
   "logo": {
-    "type": "auto",
-    "source": "$(ls ~/.config/fastfetch/ascii_logos/*.{txt,png} | shuf -n 1)",
-    "color": { "1": "green" },
-    "padding": {
-      "top": 2,
-      "right": 6,
-      "left": 2
-    },
-    "width": 30,
-    "height": 15
+    "type": "file",
+    "source": "~/.config/fastfetch/ascii_logos/origami-gradient.txt",
+    "color": { "1": "bright_red", "2": "red", "3": "green", "4": "yellow", "5": "white" },
+    "padding": { "top": 1, "right": 6, "left": 2 }
   },
   "modules": [
     "break",
-    {
-      "type": "custom",
-      "format": "\u001b[90m╭───────────────────── \u001b[1;32mHardware\u001b[0;90m ─────────────────────╮"
-    },
-    {
-      "type": "host",
-      "key": "│  ",
-      "keyColor": "green"
-    },
-    {
-      "type": "cpu",
-      "key": "│ ├ ",
-      "showPeCoreCount": true,
-      "keyColor": "green"
-    },
-    {
-      "type": "gpu",
-      "key": "│ ├ ",
-      "detectionMethod": "pci",
-      "keyColor": "green"
-    },
-    {
-      "type": "display",
-      "key": "│ ├󱄄 ",
-      "keyColor": "green"
-    },
-    {
-      "type": "disk",
-      "key": "│ ├󰋊 ",
-      "keyColor": "green"
-    },
-    {
-      "type": "memory",
-      "key": "│ ├ ",
-      "keyColor": "green"
-    },
-    {
-      "type": "swap",
-      "key": "│ ╰󰓡 ",
-      "keyColor": "green"
-    },
-    {
-      "type": "custom",
-      "format": "\u001b[90m╰────────────────────────────────────────────────────╯"
-    },
+    { "type": "custom", "key": " ", "format": "{#black}── {#red}system {#black}────────────────────" },
+    { "type": "os", "key": " " },
+    { "type": "host", "key": " " },
+    { "type": "kernel", "key": " " },
+    { "type": "uptime", "key": "󱫐 " },
     "break",
-    {
-      "type": "custom",
-      "format": "\u001b[90m╭───────────────────── \u001b[1;34mSoftware\u001b[0;90m ─────────────────────╮"
-    },
-    {
-      "type": "os",
-      "key": "│ \ue900 ",
-      "keyColor": "blue"
-    },
-    {
-      "type": "kernel",
-      "key": "│ ├ ",
-      "keyColor": "blue"
-    },
-    {
-      "type": "wm",
-      "key": "│ ├ ",
-      "keyColor": "blue"
-    },
-    {
-      "type": "terminal",
-      "key": "│ ├ ",
-      "keyColor": "blue"
-    },
-    {
-      "type": "packages",
-      "key": "│ ├󰏖 ",
-      "keyColor": "blue"
-    },
-    {
-      "type": "command",
-      "key": "│ ├󰸌 ",
-      "keyColor": "blue",
-      "text": "echo -e \"$(cat ~/.local/state/cozy/current-theme) \\e[38m●\\e[37m●\\e[36m●\\e[35m●\\e[34m●\\e[33m●\\e[32m●\\e[31m●\""
-    },
-    {
-      "type": "terminalfont",
-      "key": "│ ╰ ",
-      "keyColor": "blue"
-    },
-    {
-      "type": "custom",
-      "format": "\u001b[90m╰────────────────────────────────────────────────────╯"
-    },
+    { "type": "custom", "key": " ", "format": "{#black}── {#green}hardware {#black}──────────────────" },
+    { "type": "cpu", "key": " ", "keyColor": "green" },
+    { "type": "gpu", "key": " ", "keyColor": "green", "detectionMethod": "pci" },
+    { "type": "memory", "key": " ", "keyColor": "green", "format": "{used} / {total} ({percentage}) {percentage-bar}", "percent": { "type": ["bar", "num"] } },
+    { "type": "disk", "key": "󰋊 ", "keyColor": "green", "format": "{size-used} / {size-total} ({size-percentage}) {size-percentage-bar}", "percent": { "type": ["bar", "num"] } },
     "break",
-    {
-      "type": "custom",
-      "format": "\u001b[90m╭───────────────── \u001b[1;35mStatus & Uptime\u001b[0;90m ──────────────────╮"
-    },
-    {
-      "type": "command",
-      "key": "│ 󱦟 ",
-      "keyColor": "magenta",
-      "text": "birth_install=$(stat -c %W /); current=$(date +%s); time_progression=$((current - birth_install)); days_difference=$((time_progression / 86400)); echo \"$days_difference days\""
-    },
-    {
-      "type": "uptime",
-      "key": "│ ├󱫐 ",
-      "keyColor": "magenta"
-    },
-    {
-      "type": "battery",
-      "key": "│ ╰ ",
-      "keyColor": "magenta"
-    },
-    {
-      "type": "custom",
-      "format": "\u001b[90m╰────────────────────────────────────────────────────╯"
-    },
-    "break"
+    { "type": "custom", "key": " ", "format": "{#black}── {#yellow}session {#black}───────────────────" },
+    { "type": "wm", "key": " ", "keyColor": "yellow" },
+    { "type": "shell", "key": " ", "keyColor": "yellow" },
+    { "type": "battery", "key": " ", "keyColor": "yellow", "format": "{capacity-bar} {capacity} [{status}]", "percent": { "type": ["bar", "num"] } },
+    { "type": "colors", "key": " ", "symbol": "circle" }
   ]
 }

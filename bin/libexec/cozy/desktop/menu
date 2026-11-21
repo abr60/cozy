@@ -915,7 +915,7 @@ go_to_menu() {
 }
 
 # Allow user extensions and overrides
-USER_EXTENSIONS="$HOME/.config/cozy/extensions/menu.sh"
+USER_EXTENSIONS="$HOME/.config/Cozy/extensions/menu.sh"
 [[ -f $USER_EXTENSIONS ]] && source "$USER_EXTENSIONS"
 
 toggle_existing_menu

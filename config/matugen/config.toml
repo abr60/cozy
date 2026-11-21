@@ -18,21 +18,21 @@ post_hook   = "hyprctl reload"
 input_path  = "~/.config/matugen/templates/waybar.css"
 output_path = "~/.config/waybar/matugen.css"
 
-[templates.quickshell_overview]
-input_path = '~/.config/matugen/templates/quickshell-overview.qml'
-output_path = '~/.config/quickshell/overview/common/Appearance.colors.qml'
+#[templates.quickshell_overview]
+#input_path = '~/.config/matugen/templates/quickshell-overview.qml'
+#output_path = '~/.config/quickshell/overview/common/Appearance.colors.qml'
 
 [templates.hyprlock]
 input_path  = "~/.config/matugen/templates/hyprlock.conf"
 output_path = "~/.config/hypr/hyprlock.conf"
 
-[templates.fuzzel]
-input_path = '~/.config/matugen/templates/fuzzel/fuzzel_theme.ini'
-output_path = '~/.config/fuzzel/fuzzel_theme.ini'
+#[templates.fuzzel]
+#input_path = '~/.config/matugen/templates/fuzzel/fuzzel_theme.ini'
+#output_path = '~/.config/fuzzel/fuzzel_theme.ini'
 
 [templates.qs_bar_colors]
 input_path  = "~/.config/matugen/templates/qs-colors.toml"
-output_path = "~/.local/state/cozy/qs-colors.toml"
+output_path = "~/.local/state/Cozy/qs-colors.toml"
 
 # 3. Terminal
 [templates.kitty]
@@ -43,7 +43,7 @@ post_hook   = "pkill -USR1 kitty"
 [templates.foot]
 input_path  = "~/.config/matugen/templates/foot-colors.ini"
 output_path = "~/.config/matugen/generated/foot-colors.ini"
-post_hook   = "pkill -SIGUSR1 foot || true; ln -nfs \"$HOME/.config/matugen/generated/foot-colors.ini\" \"$HOME/.config/foot/foot-colors.ini\"; touch \"$HOME/.config/foot/foot.ini\""
+post_hook   = "pkill -SIGUSR1 foot || true; ln -nfs --relative \"$HOME/.config/matugen/generated/foot-colors.ini\" \"$HOME/.config/foot/foot-colors.ini\"; touch \"$HOME/.config/foot/foot.ini\""
 
 [templates.nvim]
 input_path  = "~/.config/matugen/templates/nvim-colors.vim"

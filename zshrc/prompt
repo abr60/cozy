@@ -1,0 +1,23 @@
+# --- PROMPT ---
+# Colors use ANSI palette slots, so the prompt follows the active matugen theme.
+
+autoload -Uz vcs_info add-zsh-hook
+
+zstyle ':vcs_info:git:*' check-for-changes true
+zstyle ':vcs_info:git:*' stagedstr   ' '
+zstyle ':vcs_info:git:*' unstagedstr ' 󰓡'
+zstyle ':vcs_info:git:*' formats     '  %b%u%c'
+zstyle ':vcs_info:git:*' actionformats '  %b|%a%u%c'
+add-zsh-hook precmd vcs_info
+
+_co_muted=$'\e[30m'
+_co_accent=$'\e[31m'
+_co_dir=$'\e[36m'
+_co_git=$'\e[35m'
+_co_ok=$'\e[32m'
+_co_err=$'\e[31m'
+_co_reset=$'\e[0m'
+
+PROMPT="%{$_co_muted%}╭─%{$_co_accent%} 󰋊 %{$_co_dir%}%~%{$_co_git%}\${vcs_info_msg_0_}%{$_co_reset%}
+%{$_co_muted%}╰─%(?:%{$_co_ok%}:%{$_co_err%}) ❯ %{$_co_reset%}"
+RPROMPT="%{$_co_muted%}%D{%H:%M}%{$_co_reset%}"
