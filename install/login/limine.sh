@@ -139,7 +139,7 @@ sudo mkdir -p /etc/limine-entry-tool.d
 sudo tee /etc/limine-entry-tool.d/cozy-defaults.conf >/dev/null <<'EOF'
 TARGET_OS_NAME="Cozy"
 
-KERNEL_CMDLINE[default]+=" quiet splash loglevel=0 systemd.show_status=false rd.udev.log_level=0 vt.global_cursor_default=0"
+KERNEL_CMDLINE[default]+=" quiet splash loglevel=3 systemd.show_status=false rd.udev.log_level=0 vt.global_cursor_default=0"
 
 # Kernel 7.1+ unpacks initramfs asynchronously which races /init — unpack synchronously.
 KERNEL_CMDLINE[default]+=" initramfs_async=0"

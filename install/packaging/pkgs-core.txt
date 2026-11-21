@@ -29,8 +29,7 @@ gpu-screen-recorder
 qt5-wayland
 qt6-wayland
 xdg-desktop-portal-gtk
-greetd
-greetd-tuigreet
+ly
 
 # --- Graphics, Audio, Bluetooth, Power & Firmware ---
 mesa

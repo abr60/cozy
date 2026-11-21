@@ -81,7 +81,7 @@ Interactive terminal work → `sudo`. Non-interactive / agent-launched → `pkex
 | **Hyprland** | Wayland compositor | `~/.config/hypr/*.lua` + `hypr*.conf` |
 | **Waybar** | Status bar | `~/.config/waybar/` |
 | **Rofi** | App launcher + Cozy menu | `~/.config/rofi/`, `bin/menu` |
-| **SDDM** | Display manager | `/etc/sddm.conf.d/` |
+| **Ly** | Display manager | `/etc/ly/config.ini`, `ly@ttyX.service` |
 | **Limine** | Bootloader (with LUKS) | `/boot/limine.conf`, `/etc/kernel/cmdline`, `/etc/limine-entry-tool.d/` |
 | **Plymouth** | Boot splash | `/usr/share/plymouth/themes/cozy/`, `/etc/plymouth/plymouthd.conf` |
 | **Alacritty/Foot/Ghostty/Kitty** | Terminals | `~/.config/<terminal>/` |

@@ -13,6 +13,5 @@ enable_system_service NetworkManager-dispatcher.service
 enable_system_service bluetooth.service
 enable_system_service thinkfan.service
 enable_system_service ufw.service
-enable_system_service sddm.service
 enable_system_service power-profiles-daemon.service
 #enable_system_service linux-enable-ir-emitter.service

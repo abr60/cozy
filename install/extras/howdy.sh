@@ -3,7 +3,7 @@
 # extras/howdy.sh — Set up Howdy face recognition for ThinkPad T14 Gen 2i
 #
 # Auth order configured:
-#   Graphical (hyprlock/sddm): howdy → fingerprint → password
+#   Graphical (hyprlock/ly): howdy → fingerprint → password
 #   Terminal (sudo):           howdy → password → fingerprint
 #
 # Requires: howdy-next-git, linux-enable-ir-emitter-git, v4l-utils
@@ -285,7 +285,7 @@ else
 fi
 
 # ─── PAM Configuration ────────────────────────────────────────────────────────
-# pam.sh handles the main Howdy PAM wiring (hyprlock, sddm, sudo, etc.).
+# pam.sh handles the main Howdy PAM wiring (hyprlock, ly, sudo, etc.).
 # Here we inject pam_exec BEFORE each howdy line so linux-enable-ir-emitter
 # run fires at auth time — belt-and-suspenders alongside the udev rule.
 section "PAM Configuration"
