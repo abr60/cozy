@@ -1,5 +1,6 @@
 # --- ENVS & PATH ---
 export EDITOR=nvim
+export VISUAL=nvim
 export ZSH="$HOME/.oh-my-zsh"
 export PATH=$PATH:~/.spicetify
 export PATH="$HOME/.cargo/bin:$PATH"

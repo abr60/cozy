@@ -1,9 +1,9 @@
 # --- INITIALIZATION ---
 
 # Visual Intro (Fortune/Cowsay)
-if [[ $(tty) == *"pts"* ]]; then
-  fortune | cowsay -r
-fi
+#if [[ $(tty) == *"pts"* ]]; then
+ # fortune | cowsay -r
+#fi
 
 # External Tool Inits
 if command -v starship &>/dev/null; then

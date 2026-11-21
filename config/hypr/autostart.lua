@@ -2,7 +2,7 @@
 -- These run in addition to Cozy's default autostart.
 
 -- --- System Daemons & Services ---
-a.exec_on_start("ollama serve")
+--a.exec_on_start("ollama serve")
 a.exec_on_start("cozy-earbuds-status")
 a.exec_on_start("easyeffects --gapplication-service") -- EasyEffects DSP
 --a.exec_on_start("xdg-terminal-exec bash \"$COZY_PATH/post-install.sh\"")
@@ -15,5 +15,4 @@ a.exec_on_start("easyeffects --gapplication-service") -- EasyEffects DSP
 --a.exec_on_start("sleep 1 && paplay ~/.config/hypr/assets/sounds/TempleOS-Hymn-Risen.wav")
 
 -- --- Hyprexpo -- ---
---a.exec_on_start("hyprpm reload")  -- Reload plugins on every boot
 

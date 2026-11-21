@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# cozy:summary=Set the default editor for $EDITOR
+# cozy:summary=Set the default editor for $EDITOR and $VISUAL
 # cozy:args=[code|cursor|zed|sublime_text|helix|vim|emacs|nvim]
 # cozy:examples=cozy default editor | cozy default editor code | cozy default editor helix
 
@@ -24,7 +24,11 @@ nvim) editor="nvim"; name="Neovim"; glyph="" ;;
   ;;
 esac
 
-sed -i "s/^export EDITOR=.*/export EDITOR=$editor/" ~/.config/uwsm/default
+sed -i \
+  -e "s/^export EDITOR=.*/export EDITOR=$editor/" \
+  -e "s/^export VISUAL=.*/export VISUAL=$editor/" \
+  ~/.config/uwsm/default
 
 export EDITOR="$editor"
+export VISUAL="$editor"
 notify-send -u low "$glyph    $name is now the default editor" "      Effective after logging out"

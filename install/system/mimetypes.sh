@@ -40,12 +40,12 @@ xdg-mime default sioyek.desktop application/pdf 2>/dev/null || \
 xdg-mime default org.gnome.Evince.desktop application/pdf 2>/dev/null || true
 ok "Default PDF viewer: Sioyek"
 
-# Text — VSCode
+# Text — Neovim
 for mime in text/plain text/english text/x-makefile text/x-c++hdr \
             text/x-c++src text/x-chdr text/x-csrc text/x-java \
             text/x-python application/x-shellscript text/xml application/xml; do
-    xdg-mime default code.desktop "$mime" 2>/dev/null || true
+    xdg-mime default nvim.desktop "$mime" 2>/dev/null || true
 done
-ok "Default text editor: VSCode"
+ok "Default text editor: Neovim"
 
 ok "MIME types configured"
