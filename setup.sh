@@ -45,7 +45,7 @@ gum style \
     "  • Install core packages via pacman and yay" \
     "  • Set up fonts, binaries, and desktop apps" \
     "  • Configure system settings and services" \
-    "  • Set up SDDM, Plymouth, and Limine" \
+    "  • Set up Ly, Plymouth, and Limine" \
     "  • Change your default shell to Zsh"
 
 echo ""
@@ -128,6 +128,7 @@ run_step "system/mimetypes.sh"            "Default apps"                    fals
 # ── Hardware ──────────────────────────────────────────────────────────────────
 run_step "hardware/bluetooth.sh"          "Bluetooth"                       false
 run_step "hardware/wifi-powersave.sh"     "WiFi powersave"                  false
+run_step "system/battery-timer.sh"        "Battery / screen-time timer"     false
 run_step "hardware/fast-shutdown.sh"      "Fast shutdown"                   false
 run_step "hardware/unmount-fuse.sh"       "FUSE unmount hook"               false
 run_step "hardware/swayosd.sh"            "SwayOSD"                         false
@@ -135,11 +136,15 @@ run_step "hardware/recover-monitor.sh"    "Monitor recovery"                fals
 
 # ── Services ──────────────────────────────────────────────────────────────────
 run_step "services/all.sh"    "services"                 false
+run_step "hardware/battery-low-hook.sh" "Low-battery hook" false
+run_step "hardware/battery-saver.sh"    "Battery saver" false
+run_step "hardware/keyboard-idle.sh"    "Keyboard idle" false
 
 # ── Login / Boot Stack ────────────────────────────────────────────────────────
-run_step "login/sddm.sh"                  "SDDM"                            false
+run_step "login/ly.sh"                    "Ly display manager"              false
 run_step "login/limine.sh"                "Limine bootloader"               true
 run_step "login/plymouth.sh"              "Plymouth"                        true
+run_step "system/acpi-loglevel.sh"        "ACPI console log level"          false
 run_step "login/agents.sh"                "Agent skills"                    false
 
 # ==========================================

@@ -24,10 +24,12 @@ else
     if [[ -d "$WALLS_DIR" ]] && [[ -n "$(ls -A "$WALLS_DIR")" ]]; then
         warn "$WALLS_DIR exists and is not empty — skipping clone"
     else
-        spinner "Cloning Walls..."
-        git clone "$REPO_URL" "$WALLS_DIR" && \
-        ok "Walls cloned to $WALLS_DIR" || \
-        { warn "Clone failed — check network connection"; exit 1; }
+        if spinner "Cloning Walls..." git clone "$REPO_URL" "$WALLS_DIR"; then
+            ok "Walls cloned to $WALLS_DIR"
+        else
+            warn "Clone failed — check network connection"
+            exit 1
+        fi
     fi
 fi
 
@@ -65,9 +67,10 @@ find "$WALLS_DIR" -mindepth 1 -maxdepth 1 -type d ! -name ".git" -print0 | while
         mkdir -p "$target_theme_dir"
     fi
 
-    # Generate or overwrite the active symlink 
-    ln -sfn "$source_dir" "$target_link"
-    ok "Linked $theme_name -> $target_link"
+    # Generate or overwrite the active symlink (relative so the repo stays portable)
+    rel_source="$(realpath --relative-to="$target_theme_dir" "$source_dir")"
+    ln -sfn "$rel_source" "$target_link"
+    ok "Linked $theme_name -> $rel_source"
 done
 
 ok "Wallpaper links are up to date."

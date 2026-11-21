@@ -30,7 +30,7 @@ _NC='\033[0m'
 # ── Terminal dimensions ────────────────────────────────────────────────────────
 # Uses stty via /dev/tty (reliable across TTY, sourced, and piped contexts)
 if [[ -e /dev/tty ]]; then
-    _TERM_SIZE=$(stty size 2>/dev/null </dev/tty)
+    _TERM_SIZE=$(stty size 2>/dev/null </dev/tty || true)
     if [[ -n "$_TERM_SIZE" ]]; then
         export TERM_HEIGHT=$(echo "$_TERM_SIZE" | cut -d' ' -f1)
         export TERM_WIDTH=$(echo  "$_TERM_SIZE" | cut -d' ' -f2)

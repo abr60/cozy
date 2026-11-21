@@ -20,9 +20,12 @@ fi
 
 # ─── All subdirs present in config/ that should be stowed ────────────────────
 # Generated dynamically from config/*/ so nothing is missed or duplicated.
+# nvim is intentionally excluded — LazyVim config lives standalone at ~/.config/nvim
 STOW_DIRS=()
 for d in "$COZY_REAL/config"/*/; do
-    STOW_DIRS+=("$(basename "$d")")
+    b="$(basename "$d")"
+    [[ "$b" == "nvim" ]] && continue
+    STOW_DIRS+=("$b")
 done
 
 # ─── Remove existing targets to prevent Stow fold conflicts ──────────────────

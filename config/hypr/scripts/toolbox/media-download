@@ -159,8 +159,9 @@ if [[ "$type" == "Video" ]]; then
       -o "$download_dir/%(title)s.%(ext)s" "$url" 2>/dev/null \
       | grep --line-buffered "%" \
       | while IFS= read -r line; do printf "\r  %s        " "$line"; done
+    yt_status=${PIPESTATUS[0]}
     echo
-    if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+    if [[ $yt_status -ne 0 ]]; then
       log_error "Download failed"
       show_done
       exit 1
@@ -172,78 +173,140 @@ if [[ "$type" == "Video" ]]; then
 # ── MUSIC ────────────────────────────────────────────────────────────────────
 elif [[ "$type" == "Music" ]]; then
 
-  # Audio format
+  # Audio format — best quality first
   echo
-  audio_format=$(gum choose --header "Select audio format" "FLAC (Lossless)" "Opus" "M4A" "MP3")
+  audio_format=$(gum choose --header "Select audio format" \
+    "Best — Opus (native)" \
+    "M4A / AAC (universal)" \
+    "MP3 (max compatibility)" \
+    "FLAC (lossless source only)")
   [[ -z "$audio_format" ]] && { log_info "Cancelled"; exit 0; }
 
   case "$audio_format" in
-    "FLAC (Lossless)") audio_format_lower="flac" ;;
-    *)                 audio_format_lower=$(echo "$audio_format" | tr '[:upper:]' '[:lower:]') ;;
+    "Best — Opus (native)")
+      audio_format_lower="opus"
+      audio_format_spec="bestaudio[acodec=opus]/bestaudio/best"
+      audio_quality="192k"
+      ;;
+    "M4A / AAC (universal)")
+      audio_format_lower="m4a"
+      audio_format_spec="bestaudio[ext=m4a]/bestaudio/best"
+      audio_quality="192k"
+      ;;
+    "MP3 (max compatibility)")
+      audio_format_lower="mp3"
+      audio_format_spec="bestaudio/best"
+      audio_quality="320k"
+      ;;
+    "FLAC (lossless source only)")
+      audio_format_lower="flac"
+      audio_format_spec="bestaudio[ext=flac]/bestaudio/best"
+      audio_quality="8"
+      log_info "FLAC only preserves quality if the source itself is lossless"
+      ;;
   esac
-
-  # Quality selection
-  echo
-  if [[ "$audio_format_lower" == "flac" ]]; then
-    audio_quality="0"
-    log_info "FLAC: Preset locked to maximum compression (0)"
-  else
-    quality_choice=$(gum choose --header "Select target bitrate" "320k (Excellent)" "192k (Standard)" "128k (Compact)")
-    [[ -z "$quality_choice" ]] && quality_choice="192k (Standard)"
-    case "$quality_choice" in
-      "320k (Excellent)") audio_quality="320k" ;;
-      "192k (Standard)")  audio_quality="192k" ;;
-      "128k (Compact)")   audio_quality="128k" ;;
-    esac
-  fi
 
   # Metadata flags
   audio_root="$HOME/Music"
   mkdir -p "$audio_root"
 
   metadata_flags=(
+    -f "$audio_format_spec"
     --extract-audio
     --audio-format "$audio_format_lower"
     --audio-quality "$audio_quality"
     --embed-thumbnail
     --embed-metadata
-    --add-metadata
-    --parse-metadata "%(uploader)s:%(artist)s"
-    --parse-metadata "%(title)s:%(title)s"
   )
+  [[ "$audio_format_lower" == "flac" ]] && \
+    metadata_flags+=(--postprocessor-args "ffmpeg:-compression_level 8")
+
+  # Stage downloads, verify them, then promote into the library
+  stage_root=$(mktemp -d "$audio_root/.cozy-media.XXXXXX") || exit 1
+  manifest="$stage_root/.manifest"
+
+  verify_staged_tracks() {
+    local f errors
+    while IFS= read -r f; do
+      [[ -f "$f" ]] || continue
+      if ! ffprobe -v error -select_streams a:0 -show_entries stream=codec_name \
+             -of csv=p=0 "$f" 2>/dev/null | grep -q .; then
+        log_error "No audio stream in: $f"
+        return 1
+      fi
+      errors=$(ffmpeg -v error -i "$f" -map 0:a:0 -f null - 2>&1)
+      if [[ -n "$errors" ]]; then
+        log_error "Corrupt audio detected in: $f"
+        return 1
+      fi
+    done < "$manifest"
+  }
+
+  promote_staged_tracks() {
+    local f rel target_dir
+    while IFS= read -r f; do
+      [[ -f "$f" ]] || continue
+      rel=${f#"$stage_root/"}
+      target_dir="$audio_root/$(dirname "$rel")"
+      mkdir -p "$target_dir" || return 1
+      mv -f "$f" "$target_dir/$(basename "$rel")" || return 1
+    done < "$manifest"
+  }
 
   # Download
   echo
   if $is_playlist; then
-    out_template="$audio_root/%(playlist_title)s/%(title)s.%(ext)s"
+    safe_playlist_title=$(echo "$playlist_title" | tr '/:*?"<>|\\' '_')
+    out_template="$stage_root/$safe_playlist_title/%(title)s.%(ext)s"
     log_step "Downloading playlist: $playlist_title ($playlist_count items @ $audio_format)..."
     echo
     yt-dlp "${metadata_flags[@]}" \
       --no-warnings --yes-playlist --ignore-errors \
       --newline \
+      --print-to-file "after_move:%(filepath)s" "$manifest" \
       --progress-template "download:[%(info.playlist_index)s/%(playlist_count)s] %(info.title).40s | %(progress._percent_str)s | %(progress._speed_str)s | ETA %(progress._eta_str)s" \
       -o "$out_template" "$url" 2>/dev/null \
       | grep --line-buffered "download:" \
       | while IFS= read -r line; do printf "\r  %s        " "$line"; done
+    yt_status=${PIPESTATUS[0]}
     echo
-    log_success "Playlist downloaded and mapped to library under $audio_root"
+    if [[ $yt_status -ne 0 ]]; then
+      log_error "Playlist download failed"
+      exit 1
+    fi
   else
-    out_template="$audio_root/%(title)s.%(ext)s"
+    out_template="$stage_root/%(title)s.%(ext)s"
     log_step "Downloading track ($audio_format)..."
     yt-dlp "${metadata_flags[@]}" \
       --no-warnings --playlist-items 1 \
       --newline \
+      --print-to-file "after_move:%(filepath)s" "$manifest" \
       --progress-template "download: %(progress._percent_str)s | %(progress._speed_str)s | ETA %(progress._eta_str)s" \
       -o "$out_template" "$url" 2>/dev/null \
       | grep --line-buffered "%" \
       | while IFS= read -r line; do printf "\r  %s        " "$line"; done
+    yt_status=${PIPESTATUS[0]}
     echo
-    if [[ $? -ne 0 ]]; then
+    if [[ $yt_status -ne 0 ]]; then
       log_error "Audio extraction failed"
       exit 1
     fi
-    log_success "Track saved to $audio_root"
   fi
+
+  if [[ ! -f "$manifest" ]]; then
+    log_error "No downloaded files were reported"
+    exit 1
+  fi
+  if ! verify_staged_tracks; then
+    log_error "Verification failed — files kept in $stage_root"
+    exit 1
+  fi
+  if ! promote_staged_tracks; then
+    log_error "Failed to move files from $stage_root"
+    exit 1
+  fi
+  rm -rf -- "$stage_root"
+  log_success "Audio saved to $audio_root"
 
   # ── Sync Hook ──────────────────────────────────────────────────────────────
   echo

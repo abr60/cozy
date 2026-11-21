@@ -36,6 +36,10 @@ pkgconf           # [tag:Hyprpm]
 ninja             # [tag:Hyprpm]
 
 
+# --- Media ---
+yt-dlp
+python-mutagen    # Cover art for Opus/FLAC downloads
+
 # --- Applications ---
 obsidian
 telegram-desktop

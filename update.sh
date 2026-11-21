@@ -144,9 +144,15 @@ export INSTALL_MODE="complete"
 section "Re-applying Scripts"
 run_step "packaging/packages"          "Syncing packages"
 run_step "config/fonts.sh"             "Syncing fonts"
+run_step "login/ly.sh"                 "Ly display manager theme"
+run_step "system/acpi-loglevel.sh"     "ACPI console log level"
+run_step "system/battery-timer.sh"     "Battery / screen-time timer"
 run_step "config/applications.sh"      "Syncing applications"
 run_step "services/system-services.sh" "Syncing system services"
 run_step "services/user-services.sh"   "Syncing user services"
+run_step "hardware/battery-low-hook.sh" "Low-battery hook"
+run_step "hardware/battery-saver.sh"    "Battery saver"
+run_step "hardware/keyboard-idle.sh"    "Keyboard idle"
 
 # ── Agent skills ──────────────────────────────────────────────────────────────
 if [[ -f "$INSTALL_DIR/login/agents.sh" ]]; then
@@ -183,6 +189,7 @@ fi
 section "Re-applying Config Symlinks"
 msg "Running stow --restow..."
 
+# Restow config symlinks, intentionally skipping nvim (LazyVim standalone config)
 STOW_OUTPUT=$(stow --restow --target="$HOME/.config" config 2>&1) || true
 
 if echo "$STOW_OUTPUT" | grep -qi "conflict\|error\|cannot"; then
