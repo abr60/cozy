@@ -62,10 +62,6 @@ gemini)
   command=(gemini --yolo)
   [[ -n ${prompt:-} ]] && command+=(--prompt-interactive "$prompt")
   ;;
-copilot)
-  command=(copilot --allow-all)
-  [[ -n ${prompt:-} ]] && command+=(--interactive "$prompt")
-  ;;
 crush)
   # --yolo belongs to the interactive command only; `crush run` never prompts.
   if [[ -n ${prompt:-} ]]; then

@@ -9,7 +9,7 @@ bin/menu
 │   └── show_setup_config_menu → Hyprland / Hypridle / Hyprlock / Hyprsunset / Swayosd / Waybar / Rofi / XCompose
 │   └── show_setup_default_menu → Browser / Terminal / Editor
 ├── show_install_menu     → Package / AUR / Web App / TUI / Service / Style / Development / Editor / Terminal / Browser / AI / Gaming / Windows
-│   └── show_install_ai_menu → Dictation / LM Studio / Ollama / Coding Agents (OpenCode, GitHub Copilot, Crush, Gemini CLI, Qwen Code, Grok CLI) + AI Web Apps (ChatGPT, Claude, Gemini, Grok, DeepSeek, Mistral, NotebookLM)
+│   └── show_install_ai_menu → Dictation / LM Studio / Ollama / Coding Agents (OpenCode, Crush, Gemini CLI, Qwen Code, Grok CLI) + AI Web Apps (ChatGPT, Claude, Gemini, Grok, DeepSeek, Mistral, NotebookLM)
 ├── show_trigger_menu / show_style_menu / show_update_menu / show_system_menu / ...
 └── go_to_menu           (direct jump: `menu Install`, `menu Setup`, etc.)
 ```

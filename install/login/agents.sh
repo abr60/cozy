@@ -30,13 +30,12 @@ fi
 
 msg "Found skills: ${skills[*]}"
 
-# All agent skill directories (opencode, copilot, gemini, hermes, codex, pi, claude)
+# All agent skill directories (opencode, gemini, hermes, codex, pi, claude)
 target_dirs=(
     "$HOME/.agents/skills"
     "$HOME/.claude/skills"
     "$HOME/.codex/skills"
     "$HOME/.pi/agent/skills"
-    "$HOME/.copilot/skills"
     "$HOME/.gemini/config/skills"
     "$HOME/.hermes/skills"
     "$HOME/.config/opencode/skills"

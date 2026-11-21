@@ -18,7 +18,7 @@ Manage **Cozy** — the user's personal Arch Linux + Hyprland setup and dotfiles
 
 Cozy repo lives at `~/Cozy` (`/home/$USER/Cozy`) and is symlinked to `~/.local/share/Cozy` (`$COZY_DIR`) during setup. That symlink is the **source of truth** for all scripts (`$COZY_DIR/default/`, `$COZY_DIR/config/`, `$COZY_DIR/bin/`, `$COZY_DIR/install/`).
 
-> `~/.agents/skills/cozy` is a **symlink** to `~/.local/share/Cozy/default/agents/skills/cozy` (also linked into `~/.claude/skills/`, `~/.codex/skills/`, `~/.pi/agent/skills/`, `~/.copilot/skills/`, `~/.gemini/config/skills/`, `~/.hermes/skills/`, and `~/.config/opencode/skills/`).
+> `~/.agents/skills/cozy` is a **symlink** to `~/.local/share/Cozy/default/agents/skills/cozy` (also linked into `~/.claude/skills/`, `~/.codex/skills/`, `~/.pi/agent/skills/`, `~/.gemini/config/skills/`, `~/.hermes/skills/`, and `~/.config/opencode/skills/`).
 
 ## When This Skill MUST Be Used
 
@@ -104,7 +104,7 @@ Prefer `cozy <group> <action>` — it's self-documenting and stable. The underly
 
 Cozy links `default/agents/skills/cozy` into every supported agent skills dir
 (`~/.agents/skills`, `~/.claude/skills`, `~/.codex/skills`, `~/.pi/agent/skills`,
-`~/.copilot/skills`, `~/.gemini/config/skills`, `~/.hermes/skills`, and
+`~/.gemini/config/skills`, `~/.hermes/skills`, and
 `~/.config/opencode/skills`) via `install/login/agents.sh` (run during `setup.sh`
 and `update.sh`). Hermes profiles get their own links automatically.
 `diagnose-crash` is also linked for crash triage. `bin/restart-opencode` (SIGUSR2)

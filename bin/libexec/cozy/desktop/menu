@@ -596,7 +596,7 @@ show_install_ai_menu() {
       echo ollama
   )
 
-  case $(menu "Install" "󱚤  ChatGPT\n󱚤  Claude\n󱚤  Gemini\n󱚤  Grok\n󱚤  DeepSeek\n󱚤  Mistral\n󱚤  NotebookLM\n  ── Local ──\n  Dictation\n  LM Studio\n  Ollama\n  ── Coding Agents ──\n  OpenCode\n  GitHub Copilot\n  Crush\n  Gemini CLI\n  Qwen Code\n  Grok CLI") in
+  case $(menu "Install" "󱚤  ChatGPT\n󱚤  Claude\n󱚤  Gemini\n󱚤  Grok\n󱚤  DeepSeek\n󱚤  Mistral\n󱚤  NotebookLM\n  ── Local ──\n  Dictation\n  LM Studio\n  Ollama\n  ── Coding Agents ──\n  OpenCode\n  Crush\n  Gemini CLI\n  Qwen Code\n  Grok CLI") in
   *ChatGPT*) present_terminal "webapp-install ChatGPT https://chatgpt.com/ ChatGPT.png" ;;
   *Claude*) present_terminal "webapp-install Claude https://claude.ai/new Claude.png" ;;
   *Gemini*) present_terminal "webapp-install Gemini https://gemini.google.com/app Gemini.png" ;;
@@ -608,7 +608,6 @@ show_install_ai_menu() {
   *Studio*) install "LM Studio" "lmstudio-bin" ;;
   *Ollama*) install "Ollama" $ollama_pkg ;;
   *OpenCode*) install_agent opencode ;;
-  *Copilot*) install_agent copilot ;;
   *"Gemini CLI"*) install_agent gemini ;;
   *"Qwen"*) install_agent qwen ;;
   *"Grok CLI"*) install_agent grok ;;
