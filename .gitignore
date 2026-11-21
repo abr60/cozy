@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+config/matugen/generated/
+config/mpv/memo-history.log
+config/gtk-3.0/bookmarks
+*.bak
