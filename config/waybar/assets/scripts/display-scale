@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# =============================================================================
+# display-scale — Waybar monitor scaling for Hyprland (Lua config)
+#
+# Usage:
+#   display-scale                 Print Waybar JSON status for the focused monitor
+#   display-scale up|down         Step the focused monitor's scale up/down
+#   display-scale set <percent>   Set an exact scale, e.g. `display-scale set 125`
+#
+# The change applies instantly through `hyprctl eval` and is persisted to
+# ~/.config/hypr/monitors/local.lua, which Hyprland loads on reload and startup
+# (require("hypr.monitors.local") in hyprland.lua).
+# =============================================================================
+
+set -uo pipefail
+
+STEPS=(1 1.25 1.5 1.75 2 2.5 3)
+CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/monitors/local.lua"
+ICON="󰍹"
+SIGNAL=11
+
+hypr_running() {
+    command -v hyprctl >/dev/null 2>&1 && hyprctl monitors -j >/dev/null 2>&1
+}
+
+focused_monitor() {
+    hyprctl monitors -j 2>/dev/null | jq -c '[.[] | select(.focused)][0] // empty'
+}
+
+refresh_waybar() {
+    pkill -RTMIN+"$SIGNAL" -x waybar 2>/dev/null || true
+}
+
+# Persist the scale for one output in the machine-local Hyprland override file.
+# Existing lines for the same output are replaced; other monitors are kept.
+persist_scale() {
+    local name="$1" scale="$2" tmp
+    mkdir -p "$(dirname "$CONF")"
+    touch "$CONF"
+    tmp="$(mktemp)"
+    grep -vE "^hl\.monitor\(\{ *output *= *\"$name\"" "$CONF" >"$tmp" 2>/dev/null || true
+    printf 'hl.monitor({ output = "%s", mode = "preferred", position = "auto", scale = %s })\n' \
+        "$name" "$scale" >>"$tmp"
+    mv "$tmp" "$CONF"
+}
+
+apply_scale() {
+    local name="$1" scale="$2"
+    hyprctl eval "hl.monitor({ output = \"$name\", mode = \"preferred\", position = \"auto\", scale = $scale })" >/dev/null 2>&1 || true
+    persist_scale "$name" "$scale"
+    refresh_waybar
+}
+
+step_scale() {
+    local dir="$1" mon name cur target
+    mon="$(focused_monitor)"
+    [ -n "$mon" ] || exit 1
+
+    name="$(jq -r '.name' <<<"$mon")"
+    cur="$(jq -r '.scale' <<<"$mon")"
+
+    if [ "$dir" = "up" ]; then
+        target="$(awk -v cur="$cur" -v steps="${STEPS[*]}" 'BEGIN {
+            n = split(steps, a, " ")
+            for (i = 1; i <= n; i++) if (a[i] > cur + 0.001) { print a[i]; exit }
+            print a[n]
+        }')"
+    else
+        target="$(awk -v cur="$cur" -v steps="${STEPS[*]}" 'BEGIN {
+            n = split(steps, a, " ")
+            for (i = n; i >= 1; i--) if (a[i] < cur - 0.001) { print a[i]; exit }
+            print a[1]
+        }')"
+    fi
+
+    apply_scale "$name" "$target"
+}
+
+set_scale() {
+    local pct="$1" mon name scale
+    case "$pct" in
+        ''|*[!0-9]*) echo "display-scale: invalid percent: $pct" >&2; exit 2 ;;
+    esac
+    if [ "$pct" -lt 50 ] || [ "$pct" -gt 400 ]; then
+        echo "display-scale: percent out of range (50-400): $pct" >&2
+        exit 2
+    fi
+
+    mon="$(focused_monitor)"
+    [ -n "$mon" ] || exit 1
+
+    name="$(jq -r '.name' <<<"$mon")"
+    scale="$(awk -v p="$pct" 'BEGIN { printf "%g", p / 100 }')"
+    apply_scale "$name" "$scale"
+}
+
+status() {
+    local mon name scale pct refresh w h lw lh tooltip
+    if ! hypr_running; then
+        printf '{"text": "%s --", "tooltip": "Hyprland is not running", "class": "unavailable"}\n' "$ICON"
+        return
+    fi
+
+    mon="$(focused_monitor)"
+    if [ -z "$mon" ]; then
+        printf '{"text": "%s --", "tooltip": "No active monitor", "class": "unavailable"}\n' "$ICON"
+        return
+    fi
+
+    name="$(jq -r '.name' <<<"$mon")"
+    scale="$(jq -r '.scale' <<<"$mon")"
+    w="$(jq -r '.width' <<<"$mon")"
+    h="$(jq -r '.height' <<<"$mon")"
+    refresh="$(jq -r '.refreshRate' <<<"$mon" | cut -d. -f1)"
+    pct="$(awk -v s="$scale" 'BEGIN { printf "%d", s * 100 + 0.5 }')"
+
+    lw="$(awk -v w="$w" -v s="$scale" 'BEGIN { printf "%d", w / s + 0.5 }')"
+    lh="$(awk -v h="$h" -v s="$scale" 'BEGIN { printf "%d", h / s + 0.5 }')"
+
+    tooltip="$name  "${pct}%"  (${lw}x${lh} logical, ${refresh} Hz)
+Scroll up/down: change scale
+Left click: scale menu"
+
+    jq -nc \
+        --arg text "$ICON ${pct}%" \
+        --arg tooltip "$tooltip" \
+        '{text: $text, tooltip: $tooltip, class: "display-scale"}'
+}
+
+case "${1:-}" in
+    up|down)
+        hypr_running || exit 1
+        step_scale "$1"
+        ;;
+    set)
+        hypr_running || exit 1
+        set_scale "${2:-}"
+        ;;
+    "")
+        status
+        ;;
+    *)
+        echo "Usage: display-scale [up|down|set <percent>]" >&2
+        exit 2
+        ;;
+esac

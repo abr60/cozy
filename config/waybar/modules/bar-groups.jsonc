@@ -11,7 +11,7 @@
 
   "group/right-1": {
     "orientation": "inherit",
-    "modules": ["custom/notification-silencing-indicator", "bluetooth", "network", "backlight", "pulseaudio", "custom/power"]
+    "modules": ["custom/notification-silencing-indicator", "bluetooth", "network", "backlight", "pulseaudio", "custom/power", "custom/display-scale"]
   },
 
   "group/right-2": {

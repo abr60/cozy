@@ -5,7 +5,7 @@
   "position": "top",
   "height": 32,
   "width": 1280,
-  "margin": "0px 6px 0px 6px",
+  "margin": "0px 0px 0px 0px",
   "spacing": 0,
 
   "modules-left": [
@@ -127,7 +127,7 @@
 },
 
   "custom/screenrecording-indicator": {
-    "exec": "$COZY_PATH/default/waybar/indicators/screen-recording.sh",
+    "exec": "$HOME/.local/share/Cozy/default/waybar/indicators/screen-recording.sh",
     "signal": 8,
     "return-type": "json",
     "on-click": "capture-screenrecording"
@@ -409,7 +409,8 @@
       "scheme_rainbow":     "cozy-matugen-scheme --apply scheme-rainbow",
       "scheme_vibrant":     "cozy-matugen-scheme --apply scheme-vibrant",
       "anim_fast":   "ln -sf ~/.config/hypr/animations/fast.lua ~/.config/hypr/animations.lua && hyprctl reload",
-      "anim_smooth": "ln -sf ~/.config/hypr/animations/fluid.lua ~/.config/hypr/animations.lua && hyprctl reload"
+      "anim_smooth": "ln -sf ~/.config/hypr/animations/fluid.lua ~/.config/hypr/animations.lua && hyprctl reload",
+      "anim_disabled": "ln -sf ~/.config/hypr/animations/disabled.lua ~/.config/hypr/animations.lua && hyprctl reload"
     }
   }
 }

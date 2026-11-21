@@ -247,6 +247,13 @@ button:hover {
     padding: 0px 6px;
 }
 
+#custom-display-scale,
+#custom-display-scale label {
+    color: @on_surface;
+    font-size: 13px;
+    padding: 0px 6px;
+}
+
 /* ── System Tray ───────────────────────────────────────── */
 #tray-expander > widget {
     padding: 0px 4px;

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<interface>
+
+    <object class="GtkMenu" id="menu">
+
+        <child>
+            <object class="GtkMenuItem" id="scale-100">
+                <property name="label">󰍹  100%</property>
+            </object>
+        </child>
+
+        <child>
+            <object class="GtkMenuItem" id="scale-125">
+                <property name="label">󰍹  125%</property>
+            </object>
+        </child>
+
+        <child>
+            <object class="GtkMenuItem" id="scale-150">
+                <property name="label">󰍹  150%</property>
+            </object>
+        </child>
+
+        <child>
+            <object class="GtkMenuItem" id="scale-175">
+                <property name="label">󰍹  175%</property>
+            </object>
+        </child>
+
+        <child>
+            <object class="GtkMenuItem" id="scale-200">
+                <property name="label">󰍹  200%</property>
+            </object>
+        </child>
+
+        <child>
+            <object class="GtkSeparatorMenuItem" id="delimiter1" />
+        </child>
+
+        <child>
+            <object class="GtkMenuItem" id="scale-250">
+                <property name="label">󰍹  250%</property>
+            </object>
+        </child>
+
+        <child>
+            <object class="GtkMenuItem" id="scale-300">
+                <property name="label">󰍹  300%</property>
+            </object>
+        </child>
+
+    </object>
+
+</interface>

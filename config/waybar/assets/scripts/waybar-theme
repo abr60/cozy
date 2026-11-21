@@ -20,7 +20,7 @@ NEXT_INDEX=$(( (CUR_INDEX + 1) % ${#STYLES[@]} ))
 SELECTED_STYLE="${STYLES[$NEXT_INDEX]}"
 
 # 3. Apply the new style via symlink
-ln -sf "$STYLE_DIR/$SELECTED_STYLE" "$WAYBAR_DIR/style.css"
+ln -sfn "css/$SELECTED_STYLE" "$WAYBAR_DIR/style.css"
 echo "$NEXT_INDEX" > "$STATE_FILE"
 
 # 4. Restart Waybar (The Cozy way)

@@ -95,6 +95,10 @@ tooltip label {
     margin-right: 2px;
 }
 
+#custom-display-scale, #custom-display-scale label {
+    margin-right: 2px;
+}
+
 
 /* ── Workspace Styling ───────────────────────────────────── */
 
@@ -386,6 +390,16 @@ button:hover {
     color:     @error;
     font-size: 15px;
     padding:   0 6px;
+}
+
+
+/* ── Display Scale Module (Added) ─────────────────────────── */
+
+#custom-display-scale,
+#custom-display-scale label {
+    color:     @on_surface;
+    font-size: 14px;
+    padding:   0 4px;
 }
 
 

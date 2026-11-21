@@ -36,6 +36,7 @@ window#waybar {
 #backlight,
 #pulseaudio,
 #custom-power,
+#custom-display-scale,
 #clock,
 #custom-vpn,
 #custom-idle-indicator,
@@ -63,6 +64,7 @@ window#waybar {
 #bluetooth { color: #89b4fa; }
 #backlight { color: #f9e2af; }
 #custom-power { color: #f38ba8; }
+#custom-display-scale { color: #89b4fa; }
 
 /* Hyprland Workspaces Active State */
 #workspaces button {

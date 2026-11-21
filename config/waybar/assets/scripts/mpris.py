@@ -218,8 +218,8 @@ class MprisController:
         album = str(metadata.get("xesam:album", ""))
         
         icon = get_icon(identity)
-        # Icon Only Formatting - Pango Markup wrapped around the glyph
-        display = f"<span size='large'>{icon}</span>"
+        # Icon + Title Formatting - Pango Markup wrapped around the glyph
+        display = f"<span size='large'>{icon} {title}</span>"
         
         status_class = status.lower() if status.lower() in ("playing", "paused", "stopped") else "stopped"
         
@@ -231,6 +231,8 @@ class MprisController:
         output = {
             "text": display,
             "class": status_class,
+            "title": title,
+            "artist": artist,
             "tooltip": f"App Target: {identity}\nArtist: {artist}\nTitle: {title}\nAlbum: {escape_pango(album)}\nStatus: {status}"
         }
         

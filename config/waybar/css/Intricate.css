@@ -278,6 +278,13 @@ button:hover {
     color: @error;
 }
 
+#custom-display-scale,
+#custom-display-scale label {
+    color: @on_surface;
+    font-size: 14px;
+    padding: 0px 4px;
+}
+
 /* ── System Tray & Indicators ─────────────────────────── */
 #bluetooth {
     font-size: 18px;

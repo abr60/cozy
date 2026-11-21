@@ -43,5 +43,27 @@
     "format": "󰧶",
     "on-click": "google-lens-capture",
     "tooltip": false
+  },
+
+  "custom/display-scale": {
+    "format": "{}",
+    "exec": "~/.config/waybar/assets/scripts/display-scale",
+    "return-type": "json",
+    "interval": 15,
+    "signal": 11,
+    "tooltip": true,
+    "menu": "on-click",
+    "menu-file": "~/.config/waybar/menu/display-scale-menu.xml",
+    "menu-actions": {
+      "scale-100": "~/.config/waybar/assets/scripts/display-scale set 100",
+      "scale-125": "~/.config/waybar/assets/scripts/display-scale set 125",
+      "scale-150": "~/.config/waybar/assets/scripts/display-scale set 150",
+      "scale-175": "~/.config/waybar/assets/scripts/display-scale set 175",
+      "scale-200": "~/.config/waybar/assets/scripts/display-scale set 200",
+      "scale-250": "~/.config/waybar/assets/scripts/display-scale set 250",
+      "scale-300": "~/.config/waybar/assets/scripts/display-scale set 300"
+    },
+    "on-scroll-up": "~/.config/waybar/assets/scripts/display-scale up",
+    "on-scroll-down": "~/.config/waybar/assets/scripts/display-scale down"
   }
 }

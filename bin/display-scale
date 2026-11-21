@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# cozy:summary=Show or change the focused monitor's display scale
+# cozy:args=<up|down|set PERCENT>
+# cozy:examples=display-scale up; display-scale set 125
+
+exec "$HOME/.config/waybar/assets/scripts/display-scale" "$@"

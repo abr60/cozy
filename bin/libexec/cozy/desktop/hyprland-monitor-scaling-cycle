@@ -5,9 +5,6 @@
 MONITOR_INFO=$(hyprctl monitors -j | jq -r '.[] | select(.focused == true)')
 ACTIVE_MONITOR=$(echo "$MONITOR_INFO" | jq -r '.name')
 CURRENT_SCALE=$(echo "$MONITOR_INFO" | jq -r '.scale')
-WIDTH=$(echo "$MONITOR_INFO" | jq -r '.width')
-HEIGHT=$(echo "$MONITOR_INFO" | jq -r '.height')
-REFRESH_RATE=$(echo "$MONITOR_INFO" | jq -r '.refreshRate')
 
 # Cycle through scales: 1 → 1.25 → 1.6 → 2 → 3 → 4 → 1 (or reverse with --reverse)
 SCALES=(1 1.25 1.6 2 3 4)
@@ -31,17 +28,10 @@ else
 fi
 
 NEW_SCALE=${SCALES[$NEW_IDX]}
+NEW_PERCENT=$(awk -v s="$NEW_SCALE" 'BEGIN { printf "%d", s * 100 + 0.5 }')
 
-hyprctl keyword monitor "$ACTIVE_MONITOR,${WIDTH}x${HEIGHT}@${REFRESH_RATE},auto,$NEW_SCALE"
+# Apply live and persist through the shared display-scale helper, which targets
+# the focused monitor and writes ~/.config/hypr/monitors/local.lua.
+display-scale set "$NEW_PERCENT"
 
-# Persist to monitors.conf if the user has a single generic catch-all line
-# (ignoring disabled monitors), so the scale survives reboots.
-MONITOR_CONF="$HOME/.config/hypr/monitors.conf"
-if [[ -f $MONITOR_CONF ]]; then
-  mapfile -t ACTIVE_LINES < <(grep -E '^[[:space:]]*monitor=' "$MONITOR_CONF" | grep -vE 'disable[[:space:]]*$')
-  if [[ ${#ACTIVE_LINES[@]} -eq 1 ]] && [[ "${ACTIVE_LINES[0]}" =~ ^monitor=,preferred,auto, ]]; then
-    sed -i -E "s|^(monitor=,preferred,auto,).*|\\1${NEW_SCALE}|" "$MONITOR_CONF"
-  fi
-fi
-
-notify-send -u low "󰍹    Display scaling set to ${NEW_SCALE}x"
+notify-send -u low "󰍹    Display scaling set to ${NEW_SCALE}x on ${ACTIVE_MONITOR}"

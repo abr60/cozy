@@ -52,11 +52,11 @@
             <child><object class="GtkMenuItem" id="theme_canvas"><property name="label">  Canvas</property></object></child>
             <child><object class="GtkMenuItem" id="theme_emerald"><property name="label">  Emerald</property></object></child>
             <child><object class="GtkMenuItem" id="theme_graffiti"><property name="label">  Graffiti</property></object></child>
-            <child><object class="GtkMenuItem" id="theme_landscape"><property name="label">  Landscape</property></object></child>
+            <child><object class="GtkMenuItem" id="theme_landscape"><property name="label">  Landscape  ✓</property></object></child>
             <child><object class="GtkMenuItem" id="theme_monochrome"><property name="label">  Monochrome</property></object></child>
             <child><object class="GtkMenuItem" id="theme_pixelpulse"><property name="label">  Pixelpulse</property></object></child>
             <child><object class="GtkMenuItem" id="theme_spectrum"><property name="label">  Spectrum</property></object></child>
-            <child><object class="GtkMenuItem" id="theme_sumie"><property name="label">  Sumi-e  ✓</property></object></child>
+            <child><object class="GtkMenuItem" id="theme_sumie"><property name="label">  Sumi-e</property></object></child>
           </object>
         </child>
       </object>
@@ -83,6 +83,7 @@
         <property name="label">󰗘  Animations</property>
         <child type="submenu">
           <object class="GtkMenu">
+            <child><object class="GtkMenuItem" id="anim_disabled"><property name="label">󱐋  disabled</property></object></child>
             <child><object class="GtkMenuItem" id="anim_fast"><property name="label">󱐋  fast</property></object></child>
             <child><object class="GtkMenuItem" id="anim_fluid"><property name="label">󱐋  fluid</property></object></child>
           </object>
