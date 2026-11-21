@@ -16,6 +16,7 @@ fi
 
 systemctl --user daemon-reload
 
+enable_user_service battery-monitor.timer
 enable_user_service swayosd-server.service
 enable_user_service recover-internal-monitor.service
 enable_user_service mpd.service

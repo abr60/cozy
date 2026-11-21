@@ -1,0 +1,707 @@
+#!/usr/bin/env python3
+"""bat-screentime — battery-session screen-on / active-time tracker.
+
+Reports time since the last AC/USB power source went offline, minus s2idle
+suspend and screen-off time.  When a charger is connected, reports the most
+recent completed discharge session instead.
+
+Runtime files (default /var/tmp, override with BAT_SCREENTIME_RUNTIME_DIR):
+    unplugged_at                    epoch of the current unplug
+    bat-screentime-power.log        "<ts> online|offline <capacity>"
+    bat-screentime-power-state      last observed aggregate power state
+    bat-screentime-idle.log         "<ts> idle-start|idle-end|screen-off|screen-on"
+
+Data sources:
+    /sys/class/power_supply         AC + USB-C PD sources, BAT0
+    journalctl                      systemd-logind suspend / systemd-sleep wake
+    /var/lib/upower                 fallback history for sessions before install
+    hypridle                        idle / display-off events
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+from dataclasses import dataclass
+from pathlib import Path
+
+RUNTIME_DIR = Path(os.environ.get("BAT_SCREENTIME_RUNTIME_DIR", "/var/tmp"))
+STAMP = RUNTIME_DIR / "unplugged_at"
+POWER_LOG = RUNTIME_DIR / "bat-screentime-power.log"
+IDLE_LOG = RUNTIME_DIR / "bat-screentime-idle.log"
+POWER_STATE = RUNTIME_DIR / "bat-screentime-power-state"
+
+POWER_SUPPLY_DIR = Path(
+    os.environ.get("BAT_SCREENTIME_POWER_SUPPLY_DIR", "/sys/class/power_supply")
+)
+UPOWER_DIR = Path(os.environ.get("BAT_SCREENTIME_UPOWER_DIR", "/var/lib/upower"))
+
+SUSPEND_START = "Suspending..."
+SUSPEND_WAKE = "System returned from sleep operation 'suspend'"
+
+Interval = tuple[int, int]
+
+
+# ── Small read helpers ────────────────────────────────────────────────────────
+
+
+def read_text(path: Path) -> str | None:
+    try:
+        return path.read_text().strip()
+    except OSError:
+        return None
+
+
+def read_int(path: Path) -> int | None:
+    text = read_text(path)
+    if text is None:
+        return None
+    try:
+        return int(float(text))
+    except ValueError:
+        return None
+
+
+def fmt_duration(seconds: float | int) -> str:
+    total = max(0, int(seconds))
+    days, rest = divmod(total, 86400)
+    hours, rest = divmod(rest, 3600)
+    minutes, secs = divmod(rest, 60)
+    parts: list[str] = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes:
+        parts.append(f"{minutes}m")
+    if secs or not parts:
+        parts.append(f"{secs}s")
+    return " ".join(parts)
+
+
+def fmt_time(ts: int) -> str:
+    return time.strftime("%Y-%m-%d %H:%M:%S %z", time.localtime(ts))
+
+
+# ── Power supplies / battery ──────────────────────────────────────────────────
+
+
+@dataclass
+class Battery:
+    name: str
+    capacity: int | None
+    status: str | None
+    watts: float | None
+
+
+def is_device_scope(path: Path) -> bool:
+    # USB-C ports expose both "System" and "Device" scopes; only system power
+    # sources keep the laptop running.
+    return read_text(path / "scope") == "Device"
+
+
+def any_online() -> bool:
+    for path in sorted(POWER_SUPPLY_DIR.glob("*")):
+        kind = read_text(path / "type")
+        if kind not in ("Mains", "USB"):
+            continue
+        if is_device_scope(path):
+            continue
+        if read_text(path / "online") == "1":
+            return True
+    return False
+
+
+def battery_info() -> Battery | None:
+    paths = sorted(POWER_SUPPLY_DIR.glob("BAT*"))
+    if not paths:
+        return None
+    path = next((p for p in paths if p.name == "BAT0"), paths[0])
+
+    watts: float | None = None
+    power_now = read_int(path / "power_now")
+    if power_now is not None:
+        watts = abs(power_now) / 1_000_000
+    else:
+        current = read_int(path / "current_now")
+        voltage = read_int(path / "voltage_now")
+        if current is not None and voltage is not None:
+            watts = abs(current * voltage) / 1_000_000_000_000
+
+    return Battery(
+        name=path.name,
+        capacity=read_int(path / "capacity"),
+        status=read_text(path / "status"),
+        watts=watts,
+    )
+
+
+# ── Power-session log ─────────────────────────────────────────────────────────
+
+
+@dataclass
+class PowerEvent:
+    ts: int
+    state: str  # "online" | "offline"
+    capacity: int | None
+
+
+@dataclass
+class Session:
+    start: int
+    end: int | None
+    start_capacity: int | None
+    end_capacity: int | None
+    source: str
+    label: str  # "active" | "last completed"
+
+
+def parse_power_log() -> list[PowerEvent]:
+    events: list[PowerEvent] = []
+    try:
+        lines = POWER_LOG.read_text(errors="replace").splitlines()
+    except OSError:
+        return events
+
+    for line in lines:
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        try:
+            ts = int(float(parts[0]))
+        except ValueError:
+            continue
+
+        state = parts[1].lower()
+        if state in ("unplug", "offline", "discharging"):
+            state = "offline"
+        elif state in ("plug", "online", "charging"):
+            state = "online"
+        else:
+            continue
+
+        capacity = None
+        if len(parts) >= 3:
+            try:
+                capacity = int(float(parts[2]))
+            except ValueError:
+                pass
+
+        events.append(PowerEvent(ts, state, capacity))
+
+    events.sort(key=lambda event: event.ts)
+    return events
+
+
+def power_sessions(events: list[PowerEvent]) -> tuple[list[Session], Session | None]:
+    completed: list[Session] = []
+    start: PowerEvent | None = None
+
+    for event in events:
+        if event.state == "offline":
+            start = event
+        elif event.state == "online" and start is not None:
+            completed.append(
+                Session(
+                    start=start.ts,
+                    end=event.ts,
+                    start_capacity=start.capacity,
+                    end_capacity=event.capacity,
+                    source="power log",
+                    label="last completed",
+                )
+            )
+            start = None
+
+    active = None
+    if start is not None:
+        active = Session(
+            start=start.ts,
+            end=None,
+            start_capacity=start.capacity,
+            end_capacity=None,
+            source="power log",
+            label="active",
+        )
+    return completed, active
+
+
+def read_stamp(now: int) -> int | None:
+    stamp = read_int(STAMP)
+    if stamp is None or stamp <= 0 or stamp > now + 300:
+        return None
+    return stamp
+
+
+# ── UPower history fallback ───────────────────────────────────────────────────
+
+
+def upower_sessions() -> tuple[list[Session], Session | None, list[str]]:
+    warnings: list[str] = []
+    model = None
+    battery_paths = sorted(POWER_SUPPLY_DIR.glob("BAT*"))
+    if battery_paths:
+        preferred = next((p for p in battery_paths if p.name == "BAT0"), battery_paths[0])
+        model = read_text(preferred / "model_name")
+
+    best_rows: list[tuple[int, int, str]] | None = None
+    best_score = -1
+    for path in sorted(UPOWER_DIR.glob("history-charge-*.dat")):
+        try:
+            text = path.read_text(errors="replace")
+        except OSError as exc:
+            warnings.append(f"cannot read {path}: {exc}")
+            continue
+
+        rows: list[tuple[int, int, str]] = []
+        for line in text.splitlines():
+            parts = line.split("\t")
+            if len(parts) < 3:
+                continue
+            try:
+                ts = int(float(parts[0]))
+                percent = int(float(parts[1]))
+            except ValueError:
+                continue
+            rows.append((ts, percent, parts[2].strip().lower()))
+
+        if not rows:
+            continue
+
+        score = len(rows) + (100_000 if model and model in path.name else 0)
+        if score > best_score:
+            best_score = score
+            best_rows = rows
+
+    if best_rows is None:
+        return [], None, warnings
+
+    rows = sorted(best_rows)
+    completed: list[Session] = []
+    start: tuple[int, int] | None = None
+    previous: str | None = None
+
+    for ts, percent, raw_state in rows:
+        if raw_state in ("charging", "fully-charged", "pending-charge"):
+            state = "charging"
+        elif raw_state in ("discharging", "pending-discharge"):
+            state = "discharging"
+        else:
+            continue
+
+        if state == "discharging":
+            if previous in (None, "charging"):
+                start = (ts, percent)
+        elif start is not None:
+            completed.append(
+                Session(
+                    start=start[0],
+                    end=ts,
+                    start_capacity=start[1],
+                    end_capacity=percent,
+                    source="upower history",
+                    label="last completed",
+                )
+            )
+            start = None
+        previous = state
+
+    active = None
+    if start is not None and previous == "discharging":
+        active = Session(
+            start=start[0],
+            end=None,
+            start_capacity=start[1],
+            end_capacity=None,
+            source="upower history",
+            label="active",
+        )
+
+    return completed, active, warnings
+
+
+def choose_session(online: bool, now: int, warnings: list[str]) -> Session | None:
+    events = parse_power_log()
+    power_completed, power_active = power_sessions(events)
+    upower_completed, upower_active, upower_warnings = upower_sessions()
+    warnings.extend(upower_warnings)
+
+    if online:
+        if power_completed:
+            return power_completed[-1]
+        if upower_completed:
+            return upower_completed[-1]
+        return None
+
+    stamp = read_stamp(now)
+    options: list[Session] = []
+    if power_active is not None:
+        options.append(power_active)
+    if upower_active is not None:
+        options.append(upower_active)
+    if stamp is not None:
+        options.append(
+            Session(
+                start=stamp,
+                end=None,
+                start_capacity=None,
+                end_capacity=None,
+                source="timestamp",
+                label="active",
+            )
+        )
+
+    if not options:
+        return None
+
+    session = max(options, key=lambda item: item.start)
+    if session.source == "timestamp" and power_active is not None:
+        if power_active.start == session.start:
+            session = power_active
+    return session
+
+
+# ── Interval helpers ──────────────────────────────────────────────────────────
+
+
+def merge(intervals: list[Interval]) -> list[Interval]:
+    if not intervals:
+        return []
+    ordered = sorted((int(a), int(b)) for a, b in intervals if b > a)
+    if not ordered:
+        return []
+    merged: list[list[int]] = [list(ordered[0])]
+    for start, end in ordered[1:]:
+        if start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    return [(start, end) for start, end in merged]
+
+
+def subtract(intervals: list[Interval], cutters: list[Interval]) -> list[Interval]:
+    base = merge(intervals)
+    cut = merge(cutters)
+    if not cut:
+        return base
+
+    result: list[Interval] = []
+    for start, end in base:
+        cursor = start
+        for cut_start, cut_end in cut:
+            if cut_end <= cursor:
+                continue
+            if cut_start >= end:
+                break
+            if cut_start > cursor:
+                result.append((cursor, min(cut_start, end)))
+            cursor = max(cursor, cut_end)
+            if cursor >= end:
+                break
+        if cursor < end:
+            result.append((cursor, end))
+    return result
+
+
+def total(intervals: list[Interval]) -> int:
+    return sum(end - start for start, end in intervals)
+
+
+def event_intervals(
+    events: list[tuple[int, str]],
+    start_event: str,
+    end_event: str,
+    window_start: int,
+    window_end: int,
+) -> list[Interval]:
+    open_at: int | None = None
+    intervals: list[Interval] = []
+
+    for ts, event in events:
+        if event == start_event:
+            if open_at is None:
+                open_at = ts
+        elif event == end_event and open_at is not None:
+            start = max(open_at, window_start)
+            end = min(ts, window_end)
+            if end > start:
+                intervals.append((start, end))
+            open_at = None
+
+    if open_at is not None:
+        start = max(open_at, window_start)
+        if window_end > start:
+            intervals.append((start, window_end))
+
+    return intervals
+
+
+# ── Journal / hypridle sources ────────────────────────────────────────────────
+
+
+def journal_suspend_intervals(
+    window_start: int, window_end: int
+) -> tuple[list[Interval], bool, list[str]]:
+    warnings: list[str] = []
+    if window_end <= window_start:
+        return [], False, warnings
+
+    cmd = [
+        "journalctl",
+        "--no-pager",
+        "-q",
+        "-o",
+        "short-unix",
+        "--since",
+        f"@{window_start}",
+    ]
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return [], False, [f"journalctl failed: {exc}"]
+
+    if proc.returncode != 0:
+        warnings.append(f"journalctl exited with status {proc.returncode}")
+    if "not seeing messages" in proc.stderr:
+        warnings.append(
+            "journal access is restricted; add your user to 'wheel' or 'systemd-journal'"
+        )
+
+    events: list[tuple[int, str]] = []
+    for line in proc.stdout.splitlines():
+        match = re.match(r"^\s*(\d+(?:\.\d+)?)\s", line)
+        if not match:
+            continue
+        ts = int(float(match.group(1)))
+        if ts > window_end + 2:
+            continue
+        if "systemd-logind" in line and SUSPEND_START in line:
+            events.append((ts, "start"))
+        elif "systemd-sleep" in line and SUSPEND_WAKE in line:
+            events.append((ts, "wake"))
+
+    events.sort()
+    intervals: list[Interval] = []
+    open_at: int | None = None
+
+    for ts, kind in events:
+        if kind == "start":
+            if open_at is None:
+                open_at = ts
+        elif open_at is not None:
+            start = max(open_at, window_start)
+            end = min(ts, window_end)
+            if end > start:
+                intervals.append((start, end))
+            open_at = None
+
+    open_at_end = open_at is not None and open_at < window_end
+    if open_at_end:
+        start = max(open_at, window_start)
+        if window_end > start:
+            intervals.append((start, window_end))
+
+    return merge(intervals), open_at_end, warnings
+
+
+def parse_idle_log() -> list[tuple[int, str]]:
+    events: list[tuple[int, str]] = []
+    valid = {"idle-start", "idle-end", "screen-off", "screen-on"}
+    try:
+        lines = IDLE_LOG.read_text(errors="replace").splitlines()
+    except OSError:
+        return events
+
+    for line in lines:
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        try:
+            ts = int(float(parts[0]))
+        except ValueError:
+            continue
+        if parts[1] in valid:
+            events.append((ts, parts[1]))
+
+    events.sort()
+    return events
+
+
+def hypridle_running() -> bool | None:
+    if shutil.which("pgrep") is None:
+        return None
+    try:
+        proc = subprocess.run(
+            ["pgrep", "-x", "hypridle"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        return None
+    return proc.returncode == 0
+
+
+# ── Metrics / output ──────────────────────────────────────────────────────────
+
+
+@dataclass
+class Metrics:
+    elapsed: int
+    asleep: int
+    screen_off_awake: int
+    screen_on: int
+    idle_on_screen: int
+    active: int
+    cycles: int
+
+
+def build_metrics(
+    window_start: int,
+    window_end: int,
+    suspend: list[Interval],
+    idle_events: list[tuple[int, str]],
+) -> Metrics:
+    screen_off = merge(
+        event_intervals(idle_events, "screen-off", "screen-on", window_start, window_end)
+    )
+    idle = merge(
+        event_intervals(idle_events, "idle-start", "idle-end", window_start, window_end)
+    )
+
+    dark = merge(suspend + screen_off)
+    idle_on_screen = subtract(idle, dark)
+
+    elapsed = max(0, window_end - window_start)
+    asleep = total(suspend)
+    screen_off_awake = total(subtract(screen_off, suspend))
+    screen_on = max(0, elapsed - total(dark))
+    idle_on_screen_total = total(idle_on_screen)
+    active = max(0, screen_on - idle_on_screen_total)
+
+    return Metrics(
+        elapsed=elapsed,
+        asleep=asleep,
+        screen_off_awake=screen_off_awake,
+        screen_on=screen_on,
+        idle_on_screen=idle_on_screen_total,
+        active=active,
+        cycles=len(suspend),
+    )
+
+
+def battery_line(battery: Battery | None, session: Session | None) -> str:
+    if battery is None:
+        return "no BAT* device"
+
+    parts: list[str] = []
+    if (
+        session is not None
+        and session.label == "last completed"
+        and session.start_capacity is not None
+        and session.end_capacity is not None
+    ):
+        parts.append(f"{session.start_capacity}% → {session.end_capacity}%")
+        if battery.capacity is not None:
+            parts.append(f"now {battery.capacity}%")
+    elif battery.capacity is not None:
+        parts.append(f"{battery.capacity}%")
+
+    if battery.watts is not None:
+        parts.append(f"{battery.watts:.1f} W")
+    if battery.status:
+        parts.append(battery.status)
+    parts.append(f"({battery.name})")
+    return " · ".join(parts)
+
+
+def print_report(
+    session: Session,
+    metrics: Metrics,
+    battery: Battery | None,
+    warnings: list[str],
+    open_suspend: bool,
+) -> None:
+    label = "active" if session.label == "active" else "last completed"
+    print(f"Session            : {label}")
+    print(f"Unplugged at       : {fmt_time(session.start)}")
+    if session.end is not None:
+        print(f"Replugged at       : {fmt_time(session.end)}")
+    print(f"Source             : {session.source}")
+    print(f"Elapsed            : {fmt_duration(metrics.elapsed)}")
+
+    cycles = f"{metrics.cycles} cycle" + ("" if metrics.cycles == 1 else "s")
+    print(f"Asleep (s2idle)    : {fmt_duration(metrics.asleep)}  ({cycles})")
+    print(f"Screen off (awake) : {fmt_duration(metrics.screen_off_awake)}")
+    print(f"Screen-on time     : {fmt_duration(metrics.screen_on)}")
+    print(f"  Idle, screen on  : {fmt_duration(metrics.idle_on_screen)}")
+    print(f"  Active usage     : {fmt_duration(metrics.active)}")
+    print(f"Battery            : {battery_line(battery, session)}")
+
+    if open_suspend:
+        print("State              : suspended now")
+    for warning in dict.fromkeys(warnings):
+        print(f"Note               : {warning}")
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv[1:] if argv is None else argv
+    if any(arg in ("-h", "--help") for arg in args):
+        print(__doc__.strip())
+        return 0
+    if args:
+        print(f"unknown argument(s): {' '.join(args)}", file=sys.stderr)
+        return 2
+
+    now = int(time.time())
+    warnings: list[str] = []
+    online = any_online()
+    session = choose_session(online, now, warnings)
+    battery = battery_info()
+
+    if session is None:
+        print("No unplug session found.")
+        print("Install the udev hook (install/system/battery-timer.sh), or grant")
+        print("read access to /var/lib/upower for the history fallback.")
+        print(f"Battery            : {battery_line(battery, None)}")
+        for warning in dict.fromkeys(warnings):
+            print(f"Note               : {warning}")
+        return 1
+
+    window_end = session.end if session.end is not None else now
+    suspend, open_suspend, journal_warnings = journal_suspend_intervals(
+        session.start, window_end
+    )
+    warnings.extend(journal_warnings)
+
+    # A completed session may end while a suspend is still in progress; that
+    # interval is clamped to the replug time, but it is not "suspended now".
+    if session.end is not None:
+        open_suspend = False
+
+    idle_events = parse_idle_log()
+    if not idle_events:
+        warnings.append(
+            "no idle/screen events yet; they appear after the first 120s idle cycle"
+        )
+
+    running = hypridle_running()
+    if running is False:
+        warnings.append("hypridle is not running; screen-on/active tracking is degraded")
+
+    metrics = build_metrics(session.start, window_end, suspend, idle_events)
+    print_report(session, metrics, battery, warnings, open_suspend)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

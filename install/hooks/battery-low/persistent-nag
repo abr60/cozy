@@ -1,0 +1,112 @@
+#!/bin/bash
+# persistent-nag — Cozy low-battery hook, ported from Omarchy's
+# battery-low.d/persistent-nag.
+#
+# Cozy's battery-monitor.timer calls `hook battery-low <capacity>` when the
+# battery first reaches 10%. This hook keeps nagging while unplugged:
+#   • plays low-battery.wav whenever the level drops further
+#   • dims the screen to 5% and re-notifies on every drop below critical
+#   • stops nagging and restores brightness as soon as you plug in
+#
+# Depends on: upower, pw-play, pactl, notify-send, brightnessctl.
+
+SOUND_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/assets/sounds"
+CRITICAL_LEVEL=5
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+PID_FILE="$RUNTIME_DIR/cozy-battery-nag.pid"
+BRIGHTNESS_FILE="$RUNTIME_DIR/cozy-battery-nag-brightness"
+
+BAT_DEV=$(upower -e 2>/dev/null | grep 'BAT' | head -n 1)
+[[ -z "$BAT_DEV" ]] && exit 0
+
+mkdir -p "$RUNTIME_DIR" 2>/dev/null || true
+
+# play_alert <file> [vol%] — unmute, set volume, play, restore prior state.
+play_alert() {
+    local sound_file="$1"
+    local target_vol="${2:-80%}"
+
+    command -v pactl &>/dev/null || return 0
+    command -v pw-play &>/dev/null || return 0
+
+    local original_vol original_mute
+    original_vol=$(pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null \
+        | awk -F '/' '{print $2}' | head -n 1 | tr -d '% ')
+    original_mute=$(pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | awk '{print $2}')
+
+    pactl set-sink-mute   @DEFAULT_SINK@ 0 2>/dev/null || true
+    pactl set-sink-volume @DEFAULT_SINK@ "$target_vol" 2>/dev/null || true
+
+    [[ -f "$sound_file" ]] && pw-play "$sound_file" 2>/dev/null || true
+
+    [[ -n "$original_vol" ]] && pactl set-sink-volume @DEFAULT_SINK@ "${original_vol}%" 2>/dev/null || true
+    [[ "$original_mute" == "yes" ]] && pactl set-sink-mute @DEFAULT_SINK@ 1 2>/dev/null || true
+}
+
+# quiet_vol — returns 50% between midnight–6 AM, 75% otherwise.
+quiet_vol() {
+    local hour
+    hour=$(date +%H)
+    (( hour >= 0 && hour < 6 )) && echo "50%" || echo "75%"
+}
+
+restore_brightness() {
+    command -v brightnessctl &>/dev/null || return 0
+    [[ -s "$BRIGHTNESS_FILE" ]] || return 0
+
+    brightnessctl set "$(cat "$BRIGHTNESS_FILE")" 2>/dev/null || true
+    rm -f "$BRIGHTNESS_FILE"
+}
+
+# Never stack nag loops — if one is already running, leave it be.
+if [[ -f "$PID_FILE" ]] && kill -0 "$(cat "$PID_FILE" 2>/dev/null)" 2>/dev/null; then
+    exit 0
+fi
+
+# Initial alert, then a detached loop that keeps nagging until you plug in.
+(
+    echo $$ > "$PID_FILE"
+    trap 'rm -f "$PID_FILE"' EXIT
+
+    play_alert "$SOUND_DIR/low-battery.wav" "$(quiet_vol)"
+
+    LAST_NAG="${1:-100}"
+    DIMMED=false
+
+    while :; do
+        sleep 30
+
+        info=$(upower -i "$BAT_DEV" 2>/dev/null) || continue
+        status=$(echo   "$info" | awk '$1 == "state:"      {print $2; exit}')
+        capacity=$(echo "$info" | awk '$1 == "percentage:" {print $2; exit}' | tr -d '%')
+
+        # Plugged back in — restore brightness and stop nagging.
+        if [[ "$status" != "discharging" ]]; then
+            [[ "$DIMMED" == true ]] && restore_brightness
+            rm -f "$BRIGHTNESS_FILE"
+            exit 0
+        fi
+
+        [[ "$capacity" =~ ^[0-9]+$ ]] || continue
+
+        # Persistent nag: re-alert every time the level drops further.
+        if (( capacity < LAST_NAG )); then
+            LAST_NAG=$capacity
+            play_alert "$SOUND_DIR/low-battery.wav" "$(quiet_vol)"
+
+            if (( capacity <= CRITICAL_LEVEL )); then
+                if [[ "$DIMMED" == false ]] && command -v brightnessctl &>/dev/null; then
+                    brightnessctl -m 2>/dev/null \
+                        | awk -F, '/backlight/ && !/kbd/ {print $4; exit}' \
+                        > "$BRIGHTNESS_FILE" 2>/dev/null || true
+                    if [[ -s "$BRIGHTNESS_FILE" ]]; then
+                        brightnessctl set 5% 2>/dev/null && DIMMED=true
+                    fi
+                fi
+                notify-send -u critical "CRITICAL: ${capacity}%" "Plug in now!" \
+                    -i battery-empty 2>/dev/null || true
+            fi
+        fi
+    done
+) >/dev/null 2>&1 &
+disown

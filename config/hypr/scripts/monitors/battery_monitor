@@ -1,51 +1,168 @@
 #!/bin/bash
 # battery-monitor — UPower-based battery event daemon
-# Requires: upower, pactl, pw-play, notify-send, brightnessctl, powerprofilesctl
+# Requires: upower, powerprofilesctl
 
 # ── Configuration ────────────────────────────────────────────────────────────
-readonly CRITICAL_LEVEL=5        # % — begin nagging + dim screen
 readonly SOUND_DIR="$HOME/.config/hypr/assets/sounds"
-readonly FLAG_FILE="/run/user/$UID/battery_alert_notified"
 readonly BAT_DEV=$(upower -e | grep 'BAT' | head -n 1)
 
-# ── Runtime State ─────────────────────────────────────────────────────────────
-LAST_STATUS=""
-CRITICAL_TRIGGERED=false
-LAST_NAG_CAPACITY=100            # Start high so first drop triggers correctly
+# ── Runtime State (persisted in XDG_RUNTIME_DIR) ─────────────────────────────
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+SAVE_STATE="$RUNTIME_DIR/cozy-battery-saver-state"
+TRESHOLD=30           # % — power-saver threshold
+INITIAL_DIM=80        # % — unplugged dim from current level
+FULL_DIM=60           # % — below $TRESHOLD dim from current level
 
-# ── Cleanup ───────────────────────────────────────────────────────────────────
-trap 'rm -f "$FLAG_FILE"' EXIT
+mkdir -p "$RUNTIME_DIR" 2>/dev/null || true
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-# play_alert <sound_file> [volume%]
-# Temporarily unmutes + sets volume, plays sound, then restores prior state.
+# play_alert <file> [volume%] — unmute, set volume, play, restore prior state.
 play_alert() {
     local sound_file="$1"
     local target_vol="${2:-80%}"
 
+    command -v pactl &>/dev/null || return 0
+    command -v pw-play &>/dev/null || return 0
+
     local original_vol original_mute
-    original_vol=$(pactl get-sink-volume @DEFAULT_SINK@ \
+    original_vol=$(pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null \
         | awk -F '/' '{print $2}' | head -n 1 | tr -d '% ')
-    original_mute=$(pactl get-sink-mute @DEFAULT_SINK@ | awk '{print $2}')
+    original_mute=$(pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | awk '{print $2}')
 
-    pactl set-sink-mute   @DEFAULT_SINK@ 0
-    pactl set-sink-volume @DEFAULT_SINK@ "$target_vol"
+    pactl set-sink-mute   @DEFAULT_SINK@ 0 2>/dev/null || true
+    pactl set-sink-volume @DEFAULT_SINK@ "$target_vol" 2>/dev/null || true
 
-    pw-play "$sound_file"   # blocking — restore happens only after it finishes
+    pw-play "$sound_file" 2>/dev/null || true
 
-    pactl set-sink-volume @DEFAULT_SINK@ "${original_vol}%"
-    [[ "$original_mute" == "yes" ]] && pactl set-sink-mute @DEFAULT_SINK@ 1
+    [[ -n "$original_vol" ]] && pactl set-sink-volume @DEFAULT_SINK@ "${original_vol}%" 2>/dev/null || true
+    [[ "$original_mute" == "yes" ]] && pactl set-sink-mute @DEFAULT_SINK@ 1 2>/dev/null || true
 }
 
-# quiet_vol — returns 50% between midnight–6 AM, 70% otherwise
-quiet_vol() {
-    local hour
-    hour=$(date +%H)
-    (( hour >= 0 && hour < 6 )) && echo "50%" || echo "75%"
+save_saver_state() {
+    # Save the current display brightness % and keyboard backlight level.
+    local current_disp=""
+    local current_kbd=""
+
+    # Display brightness
+    if command -v brightnessctl &>/dev/null; then
+        current_disp=$(brightnessctl -m 2>/dev/null \
+            | awk -F, '/backlight/ && !/kbd/ {print $4}' | tr -d '%') || true
+    fi
+    if [[ -z "$current_disp" ]]; then
+        for dev in /sys/class/backlight/*; do
+            [[ -r "$dev/brightness" ]] && current_disp=$(cat "$dev/brightness") || true
+            [[ -r "$dev/max_brightness" ]] && current_disp="${current_disp:-}$(cat "$dev/max_brightness")" || true
+            break
+        done
+    fi
+
+    # Keyboard backlight
+    if command -v brightnessctl &>/dev/null; then
+        current_kbd=$(brightnessctl -d tpacpi::kbd_backlight get 2>/dev/null) || true
+        [[ -z "$current_kbd" ]] && current_kbd="$(cat /sys/class/leds/tpacpi::kbd_backlight/brightness 2>/dev/null)" || true
+    else
+        current_kbd="$(cat /sys/class/leds/tpacpi::kbd_backlight/brightness 2>/dev/null)" || true
+    fi
+
+    # Write atomically
+    local tmpfile
+    tmpfile=$(mktemp "${RUNTIME_DIR}/cozy-battery-saver-state.XXXXXX")
+    printf 'disp=%s\nkbd=%s\n' "$current_disp" "$current_kbd" > "$tmpfile"
+    mv "$tmpfile" "$SAVE_STATE"
 }
 
-# ── Core Event Handler ────────────────────────────────────────────────────────
+restore_saver_state() {
+    # Restore the saved display brightness and keyboard backlight level.
+    if [[ ! -f "$SAVE_STATE" ]]; then
+        if command -v brightnessctl &>/dev/null; then
+            brightnessctl set 80% 2>/dev/null || true
+        fi
+        [[ -r /sys/class/leds/tpacpi::kbd_backlight/brightness ]] \
+            && brightnessctl -d tpacpi::kbd_backlight set 1 2>/dev/null || true
+        return 0
+    fi
+
+    # shellcheck source=/dev/null
+    source "$SAVE_STATE"
+
+    # Restore display
+    if [[ -n "$disp" ]]; then
+        if command -v brightnessctl &>/dev/null; then
+            if [[ "$disp" =~ ^[0-9]+%$ ]]; then
+                brightnessctl set "${disp}" 2>/dev/null || true
+            elif [[ "$disp" =~ ^[0-9]+$ ]]; then
+                brightnessctl set "${disp}%" 2>/dev/null || true
+            fi
+        else
+            [[ -w /sys/class/backlight/intel_backlight/brightness ]] \
+                && echo "$disp" > /sys/class/backlight/intel_backlight/brightness 2>/dev/null || true
+        fi
+    fi
+
+    # Restore keyboard backlight
+    if [[ -n "$kbd" ]]; then
+        if command -v brightnessctl &>/dev/null; then
+            brightnessctl -d tpacpi::kbd_backlight set "$kbd" 2>/dev/null || true
+        else
+            [[ -w /sys/class/leds/tpacpi::kbd_backlight/brightness ]] \
+                && echo "$kbd" > /sys/class/leds/tpacpi::kbd_backlight/brightness 2>/dev/null || true
+        fi
+    fi
+}
+
+apply_ac_profile() {
+    # On AC: performance profile, full display, keyboard restored
+    powerprofilesctl set performance 2>/dev/null || true
+    restore_saver_state
+    command -v pactl &>/dev/null && pactl set-sink-mute @DEFAULT_SINK@ 0 2>/dev/null || true
+}
+
+apply_battery_profile() {
+    local capacity=""
+    capacity=$(upower -i "$BAT_DEV" 2>/dev/null | awk '/percentage/ {print $2}' | tr -d '%') || true
+
+    [[ -z "$capacity" || ! "$capacity" =~ ^[0-9]+$ ]] && {
+        powerprofilesctl set balanced 2>/dev/null || true
+        return 0
+    }
+
+    if (( capacity >= 30 )); then
+        # Unplugged but ≥30%: balanced
+        powerprofilesctl set balanced 2>/dev/null || true
+    else
+        # Unplugged <30%: power-saver, dim display and keyboard off
+        # First save current state, then dim
+        save_saver_state
+
+        # dim display to 60% of current
+        if command -v brightnessctl &>/dev/null; then
+            local current_pct=""
+            current_pct=$(brightnessctl -m 2>/dev/null \
+                | awk -F, '/backlight/ && !/kbd/ {print $4}' | tr -d '%') || true
+            if [[ -n "$current_pct" && "$current_pct" =~ ^[0-9]+$ ]]; then
+                local target_pct=$((current_pct * FULL_DIM / 100))
+                [[ "$target_pct" -lt 1 ]] && target_pct=1
+                brightnessctl set "${target_pct}%" 2>/dev/null || true
+            fi
+        fi
+
+        # turn keyboard backlight off
+        if command -v brightnessctl &>/dev/null; then
+            brightnessctl -d tpacpi::kbd_backlight set 0 2>/dev/null || true
+        else
+            [[ -w /sys/class/leds/tpacpi::kbd_backlight/brightness ]] \
+                && echo 0 > /sys/class/leds/tpacpi::kbd_backlight/brightness 2>/dev/null || true
+        fi
+    fi
+}
+
+# ── Entry Point ───────────────────────────────────────────────────────────────
+if [[ -z "$BAT_DEV" ]]; then
+    echo "battery-monitor: no battery device found via upower" >&2
+    exit 1
+fi
+
 process_event() {
     local battery_info status capacity
     battery_info=$(upower -i "$BAT_DEV") || return
@@ -59,49 +176,23 @@ process_event() {
     if [[ "$status" != "$LAST_STATUS" ]]; then
         case "$status" in
             charging)
-                notify-send -u normal "Power Connected | Power Saver" "Charging (${capacity}%)" \
-                    -i battery-charging
-                powerprofilesctl set power-saver 2>/dev/null
-                rm -f "$FLAG_FILE"
-                CRITICAL_TRIGGERED=false
-                LAST_NAG_CAPACITY=100
-                play_alert "$SOUND_DIR/charging.wav" "$(quiet_vol)"
+                notify-send -u normal "Power Connected | Power Saver" \
+                    "Charging (${capacity}%)" -i battery-charging
+                powerprofilesctl set balanced 2>/dev/null || true
+                apply_ac_profile
                 ;;
             discharging)
-                notify-send -u normal "On Battery | Power Saver" "Power-saver profile active" \
-                    -i battery-caution
-                powerprofilesctl set power-saver 2>/dev/null
+                notify-send -u normal "On Battery | Power Saver" \
+                    "Power-saver profile active"
+                powerprofilesctl set balanced 2>/dev/null || true
+                apply_battery_profile
                 ;;
         esac
         LAST_STATUS="$status"
     fi
-
-    # ── 2. Critical nag (discharging only) ───────────────────────────────────
-    [[ "$status" != "discharging" ]] && return
-
-    if (( capacity <= CRITICAL_LEVEL )); then
-        if [[ "$CRITICAL_TRIGGERED" == false ]] || (( capacity < LAST_NAG_CAPACITY )); then
-            notify-send -u critical "CRITICAL: ${capacity}%" "Plug in now!" \
-                -i battery-empty
-
-            # Dim screen only on the very first critical trigger
-            [[ "$CRITICAL_TRIGGERED" == false ]] && brightnessctl set 5%
-
-            play_alert "$SOUND_DIR/low-battery.wav"
-
-            CRITICAL_TRIGGERED=true
-            LAST_NAG_CAPACITY=$capacity
-            touch "$FLAG_FILE"
-        fi
-    fi
 }
 
 # ── Entry Point ───────────────────────────────────────────────────────────────
-if [[ -z "$BAT_DEV" ]]; then
-    echo "battery-monitor: no battery device found via upower" >&2
-    exit 1
-fi
-
 process_event   # Immediate check at startup
 
 upower --monitor | while read -r _line; do

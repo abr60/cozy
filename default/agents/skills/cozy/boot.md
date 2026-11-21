@@ -15,3 +15,5 @@ ESP /boot (vfat, 2G)  →  /boot/limine.conf (flat, NOT /boot/limine/limine.conf
 - **Update**: `update.sh` re-runs `limine-entry-tool` + `limine-mkinitcpio` (guarded).
 
 Validate: `findmnt /boot`, `cat /boot/limine.conf`, `cat /etc/kernel/cmdline`, `ls /etc/limine-entry-tool.d/`, `cat /etc/mkinitcpio.conf.d/cozy_hooks.conf`.
+
+- **Quiet ACPI console:** `install/system/acpi-loglevel.sh` normalizes `loglevel=3` in both `/etc/kernel/cmdline` (embedded UKI `.cmdline`, used by systemd-boot/firmware) and `/etc/limine-entry-tool.d/cozy-defaults.conf` (Limine's generated `cmdline`), rebuilds the UKI, and applies `dmesg -n 3` immediately. It hides harmless ACPI firmware errors from the TTY only; nothing is disabled and messages remain in `journalctl`/`dmesg`. Re-run by `setup.sh`/`update.sh`; avoid `acpi=off`.

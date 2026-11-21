@@ -1,110 +1,174 @@
 #!/bin/bash
-# cozy:summary=UPower battery event daemon
+# cozy:summary=UPower battery event daemon (oneshot, timer-driven)
 # battery-monitor — UPower-based battery event daemon
-# Requires: upower, pactl, pw-play, notify-send, brightnessctl, powerprofilesctl
+# Runs every 30s via battery-monitor.timer; detects plug/unplug and battery %,
+# applies power profile, and sets absolute brightness only when the "tier" changes.
+# Manual brightness adjustments persist until the tier changes.
 
 # ── Configuration ────────────────────────────────────────────────────────────
-readonly CRITICAL_LEVEL=5        # % — begin nagging + dim screen
 readonly SOUND_DIR="$HOME/.config/hypr/assets/sounds"
-readonly FLAG_FILE="/run/user/$UID/battery_alert_notified"
 readonly BAT_DEV=$(upower -e | grep 'BAT' | head -n 1)
+readonly AC_DEV="/sys/class/power_supply/AC"
 
-# ── Runtime State ─────────────────────────────────────────────────────────────
-LAST_STATUS=""
-CRITICAL_TRIGGERED=false
-LAST_NAG_CAPACITY=100            # Start high so first drop triggers correctly
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+TIER_FILE="$RUNTIME_DIR/cozy-brightness-tier"
+TRESHOLD=30 # % — power-saver / mid threshold
+CRITICAL=10 # % — ultra-low / low threshold
 
-# ── Cleanup ───────────────────────────────────────────────────────────────────
-trap 'rm -f "$FLAG_FILE"' EXIT
+mkdir -p "$RUNTIME_DIR" 2>/dev/null || true
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-# play_alert <sound_file> [volume%]
-# Temporarily unmutes + sets volume, plays sound, then restores prior state.
 play_alert() {
-    local sound_file="$1"
-    local target_vol="${2:-80%}"
+  local sound_file="$1"
+  local target_vol="${2:-80%}"
 
-    local original_vol original_mute
-    original_vol=$(pactl get-sink-volume @DEFAULT_SINK@ \
-        | awk -F '/' '{print $2}' | head -n 1 | tr -d '% ')
-    original_mute=$(pactl get-sink-mute @DEFAULT_SINK@ | awk '{print $2}')
+  command -v pactl &>/dev/null || return 0
+  command -v pw-play &>/dev/null || return 0
 
-    pactl set-sink-mute   @DEFAULT_SINK@ 0
-    pactl set-sink-volume @DEFAULT_SINK@ "$target_vol"
+  local original_vol original_mute
+  original_vol=$(pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null |
+    awk -F '/' '{print $2}' | head -n 1 | tr -d '% ')
+  original_mute=$(pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | awk '{print $2}')
 
-    pw-play "$sound_file"   # blocking — restore happens only after it finishes
+  pactl set-sink-mute @DEFAULT_SINK@ 0 2>/dev/null || true
+  pactl set-sink-volume @DEFAULT_SINK@ "$target_vol" 2>/dev/null || true
 
-    pactl set-sink-volume @DEFAULT_SINK@ "${original_vol}%"
-    [[ "$original_mute" == "yes" ]] && pactl set-sink-mute @DEFAULT_SINK@ 1
+  pw-play "$sound_file" 2>/dev/null || true
+
+  [[ -n "$original_vol" ]] && pactl set-sink-volume @DEFAULT_SINK@ "${original_vol}%" 2>/dev/null || true
+  [[ "$original_mute" == "yes" ]] && pactl set-sink-mute @DEFAULT_SINK@ 1 2>/dev/null || true
 }
 
-# quiet_vol — returns 50% between midnight–6 AM, 70% otherwise
-quiet_vol() {
-    local hour
-    hour=$(date +%H)
-    (( hour >= 0 && hour < 6 )) && echo "50%" || echo "75%"
+# Set absolute display brightness. No clamp — caller must supply 1–100.
+set_brightness() {
+  local target="$1"
+  command -v brightnessctl &>/dev/null || return 0
+  brightnessctl set "${target}%" 2>/dev/null || true
 }
 
-# ── Core Event Handler ────────────────────────────────────────────────────────
-process_event() {
-    local battery_info status capacity
-    battery_info=$(upower -i "$BAT_DEV") || return
-    status=$(echo   "$battery_info" | awk '/state/      {print $2}')
-    capacity=$(echo "$battery_info" | awk '/percentage/ {print $2}' | tr -d '%')
+# Read the last-applied tier from the runtime file.
+# Returns: ac|high|mid|low  or "none" if file missing
+read_tier() {
+  if [[ -f "$TIER_FILE" ]]; then
+    local tier
+    tier=$(cat "$TIER_FILE" 2>/dev/null) || echo "none"
+    echo "$tier"
+  else
+    echo "none"
+  fi
+}
 
-    # Guard: skip if data is missing or non-numeric
-    [[ -z "$status" || -z "$capacity" || ! "$capacity" =~ ^[0-9]+$ ]] && return
+# Write the current tier to the runtime file.
+write_tier() {
+  local tier="$1"
+  local tmpfile
+  tmpfile=$(mktemp "${RUNTIME_DIR}/cozy-brightness-tier.XXXXXX")
+  printf '%s\n' "$tier" >"$tmpfile"
+  mv "$tmpfile" "$TIER_FILE"
+}
 
-    # ── 1. Plug / Unplug transition ──────────────────────────────────────────
-    if [[ "$status" != "$LAST_STATUS" ]]; then
-        case "$status" in
-            charging)
-                notify-send -u normal "Power Connected | Power Saver" "Charging (${capacity}%)" \
-                    -i battery-charging
-                powerprofilesctl set balanced 2>/dev/null
-                rm -f "$FLAG_FILE"
-                CRITICAL_TRIGGERED=false
-                LAST_NAG_CAPACITY=100
-                play_alert "$SOUND_DIR/charger-connected.wav" "$(quiet_vol)"
-                ;;
-            discharging)
-                notify-send -u normal "On Battery | Power Saver" "Power-saver profile active" \
-                    -i battery-caution
-                powerprofilesctl set balanced 2>/dev/null
-                ;;
-        esac
-        LAST_STATUS="$status"
+# Compute the current tier string based on AC + battery %.
+# Uses sysfs AC device as primary (instant, reacts to plug/unplug).
+# Falls back to upower only if sysfs is unavailable.
+compute_tier() {
+  on_ac="no"
+
+  # ── Primary: sysfs AC device ────────────────────────────────────────────
+  if [[ -r "$AC_DEV/online" ]]; then
+    ac_online=$(cat "$AC_DEV/online" 2>/dev/null)
+    if [[ "$ac_online" == "1" ]]; then
+      on_ac="charging"
     fi
+  fi
 
-    # ── 2. Critical nag (discharging only) ───────────────────────────────────
-    [[ "$status" != "discharging" ]] && return
-
-    if (( capacity <= CRITICAL_LEVEL )); then
-        if [[ "$CRITICAL_TRIGGERED" == false ]] || (( capacity < LAST_NAG_CAPACITY )); then
-            notify-send -u critical "CRITICAL: ${capacity}%" "Plug in now!" \
-                -i battery-empty
-
-            # Dim screen only on the very first critical trigger
-            [[ "$CRITICAL_TRIGGERED" == false ]] && brightnessctl set 5%
-
-            play_alert "$SOUND_DIR/low-battery.wav"
-
-            CRITICAL_TRIGGERED=true
-            LAST_NAG_CAPACITY=$capacity
-            touch "$FLAG_FILE"
-        fi
+  # ── Fallback: upower (only if sysfs gave us no info) ────────────────────
+  if [[ "$on_ac" == "no" ]]; then
+    # Check upower state — look for "charging" explicitly, not just "state:*charging"
+    upower_state=$(upower -i "$BAT_DEV" 2>/dev/null | awk '/^ *state:/ {print $2}')
+    if [[ "$upower_state" == "charging" ]]; then
+      on_ac="charging"
     fi
+  fi
+
+  # ── Determine tier ──────────────────────────────────────────────────────
+  if [[ "$on_ac" == "charging" ]]; then
+    echo "ac"
+    return
+  fi
+
+  # Battery mode — read capacity
+  capacity=""
+  if upower -i "$BAT_DEV" 2>/dev/null | grep -q 'percentage'; then
+    capacity=$(upower -i "$BAT_DEV" 2>/dev/null | awk '/percentage/ {print $2}' | tr -d '%') || true
+  fi
+
+  # Default if we can't read capacity
+  [[ -z "$capacity" || ! "$capacity" =~ ^[0-9]+$ ]] && {
+    echo "mid"
+    return
+  }
+
+  if ((capacity >= 30)); then
+    echo "high"
+  elif ((capacity >= CRITICAL)); then
+    echo "mid"
+  else
+    echo "low"
+  fi
 }
 
 # ── Entry Point ───────────────────────────────────────────────────────────────
+
+# Guard: exit if no battery
 if [[ -z "$BAT_DEV" ]]; then
-    echo "battery-monitor: no battery device found via upower" >&2
-    exit 1
+  echo "battery-monitor: no battery device found via upower" >&2
+  exit 1
 fi
 
-process_event   # Immediate check at startup
+# ── Check AC status & compute current tier ────────────────────────────────────
+current_tier=$(compute_tier)
+previous_tier=$(read_tier)
 
-upower --monitor | while read -r _line; do
-    process_event
-done
+# ── Apply power profile ───────────────────────────────────────────────────────
+# Always enforce the power profile (idempotent, harmless every tick)
+case "$current_tier" in
+ac)
+  powerprofilesctl set performance 2>/dev/null || true
+  target_brightness="5"
+  ;;
+high)
+  powerprofilesctl set balanced 2>/dev/null || true
+  target_brightness="35"
+  ;;
+mid)
+  powerprofilesctl set power-saver 2>/dev/null || true
+  target_brightness="25"
+  ;;
+low)
+  powerprofilesctl set power-saver 2>/dev/null || true
+  target_brightness="10"
+  ;;
+*)
+  # No tier info — default to balanced + 35%
+  powerprofilesctl set balanced 2>/dev/null || true
+  target_brightness="35"
+  ;;
+esac
+
+# ── Brightness tier override ─────────────────────────────────────────────────
+# Only set brightness when the tier changes. Manual adjustments persist.
+if [[ "$current_tier" != "$previous_tier" ]]; then
+  # Tier changed — apply the baseline brightness for the new tier
+  write_tier "$current_tier"
+  set_brightness "$target_brightness"
+  # If we were previously on a different tier, the old brightness level
+  # is lost (expected — state change resets to baseline).
+else
+  # Tier unchanged — do nothing to brightness.
+  # Manual adjustments (up/down keys) persist until the next tier change.
+  :
+fi
+
+# Exit cleanly — the timer will re-invoke this script every 30s
+exit 0

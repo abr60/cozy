@@ -1,0 +1,17 @@
+[Unit]
+Description=Cozy Keyboard Idle — turn off keyboard backlight after 10 minutes of inactivity
+Documentation=man:keyboard-idle(1)
+After=graphical-session.target
+Requires=battery-monitor.service
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+# KillMode=process ensures the Python process survives the oneshot check
+KillMode=process
+ExecStart=/home/abr/.local/share/Cozy/bin/keyboard-idle
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

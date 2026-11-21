@@ -1,0 +1,7 @@
+# Track aggregate AC/USB-C power-source state for bat-screentime.
+#
+# The hook checks every Mains/USB power supply and detects online/offline
+# edges itself, because this ThinkPad can be charged from either the barrel
+# AC adapter or USB-C PD.  The root-owned copy is installed by
+# install/system/battery-timer.sh.
+SUBSYSTEM=="power_supply", RUN+="/usr/local/bin/bat-screentime-hook reevaluate"

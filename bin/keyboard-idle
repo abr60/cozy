@@ -1,0 +1,204 @@
+#!/usr/bin/env python3
+"""Cozy Keyboard Idle — turn off keyboard backlight after 10 minutes of inactivity.
+
+Listens to /dev/input/event* devices. Only counts real keyboard key events
+(EV_KEY with keycodes in the keyboard range), so mouse movement or other
+input does NOT reset the timer.
+
+When the backlight is turned off, it stays off — no auto-restore on key press.
+Manual key press (brightness up/down/cycle) turns it back on, then 10 min of
+no key activity turns it off again.
+"""
+
+import fcntl
+import os
+import signal
+import shutil
+import sys
+import time
+from pathlib import Path
+
+# ── Configuration ────────────────────────────────────────────────────────────
+IDLE_TIMEOUT = 600          # 10 minutes in seconds
+KEYBOARD_DEVICES = [
+    "/dev/input/event3",    # AT Translated Set 2 keyboard (example)
+    "/dev/input/event7",    # fallback
+]
+# Keycode ranges for EV_KEY keyboards: accept keycode < 0x110 (272) as keyboard.
+# Mouse/joystick buttons start above this, so mouse movement won't reset the timer.
+KEYBOARD_MAX_KEYCODE = 0x110  # 272
+SAVE_FILE = "/run/user/1000/cozy-keyboard-idle-state"
+
+# ── Runtime ──────────────────────────────────────────────────────────────────
+last_activity = time.monotonic()
+running = True
+
+
+def handle_signal(signum, frame):
+    global running
+    running = False
+
+
+def get_keyboard_devices():
+    """Return list of input event devices that are keyboards."""
+    devices = []
+    for dev in KEYBOARD_DEVICES:
+        if os.path.exists(dev):
+            devices.append(dev)
+    # Also dynamically discover any /dev/input/eventN that looks like a keyboard
+    base = Path("/dev/input")
+    if base.is_dir():
+        for f in base.glob("event*"):
+            try:
+                with open(f, "rb") as fp:
+                    import fcntl as _fcntl
+                    try:
+                        name = _fcntl.ioctl(
+                            fp.fileno(),
+                            0x80006302,  # EVIOCGNAME(0x10)
+                            256
+                        ).decode("utf-8", errors="replace")
+                        if "keyboard" in name.lower() or "AT" in name:
+                            devices.append(str(f))
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+    return devices
+
+
+def is_keyboard_key(keycode):
+    """Return True if the keycode looks like a keyboard key (not mouse/joystick)."""
+    return int(keycode) < KEYBOARD_MAX_KEYCODE
+
+
+def read_event(fd):
+    """Read one input event from fd. Returns (type, code, value) or None."""
+    try:
+        data = os.read(fd, 16)
+        if len(data) < 16:
+            return None
+        ev_type = int.from_bytes(data[8:10], "little")
+        ev_code = int.from_bytes(data[10:12], "little")
+        ev_value = int.from_bytes(data[12:16], "little")
+        return (ev_type, ev_code, ev_value)
+    except OSError:
+        return None
+
+
+def set_kbd_backlight(level):
+    """Set the keyboard backlight brightness level using brightnessctl."""
+    if shutil.which('brightnessctl'):
+        import subprocess
+        try:
+            subprocess.run(
+                ['brightnessctl', '-d', 'tpacpi::kbd_backlight', 'set', str(level)],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            pass
+
+
+def get_kbd_backlight():
+    """Return current keyboard backlight level, or None."""
+    if shutil.which('brightnessctl'):
+        try:
+            result = subprocess.run(
+                ['brightnessctl', '-d', 'tpacpi::kbd_backlight', 'get'],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+            if result.returncode == 0 and result.stdout:
+                return int(result.stdout.strip())
+        except Exception:
+            pass
+    return None
+
+
+def save_state(level):
+    """Save the current backlight level so we can detect changes."""
+    state_dir = Path(SAVE_FILE).parent
+    state_dir.mkdir(parents=True, exist_ok=True)
+    with open(SAVE_FILE, "w") as _f:
+        _f.write(str(level))
+
+
+def main():
+    global last_activity, running
+
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, handle_signal)
+
+    devices = get_keyboard_devices()
+    if not devices:
+        for i in range(0, 32):
+            dev = f"/dev/input/event{i}"
+            if os.path.exists(dev):
+                devices.append(dev)
+
+    if not devices:
+        print("keyboard-idle: no input devices found", file=sys.stderr)
+        sys.exit(1)
+
+    # Open all device fds
+    fds = []
+    for dev in devices:
+        try:
+            fd = os.open(dev, os.O_RDONLY | os.O_NONBLOCK)
+            fds.append((dev, fd))
+        except OSError:
+            pass
+
+    if not fds:
+        print("keyboard-idle: could not open any input devices", file=sys.stderr)
+        sys.exit(1)
+
+    # Initialize: read current level. Never turn the light on automatically.
+    # If currently off, stay off. If manually turned on, we'll track it.
+    current_level = get_kbd_backlight()
+    # If no level detected, assume off — do NOT turn on
+    if current_level is None:
+        current_level = 0
+    save_state(current_level)
+
+    last_activity = time.monotonic()
+
+    print(f"keyboard-idle: monitoring {len(devices)} device(s), idle timeout {IDLE_TIMEOUT}s",
+          file=sys.stderr)
+
+    # Main loop
+    while running:
+        any_event = False
+        for dev, fd in fds:
+            try:
+                event = read_event(fd)
+                if event is not None:
+                    ev_type, ev_code, ev_value = event
+                    # Only process EV_KEY events that look like keyboard keys
+                    if ev_type == 1 and is_keyboard_key(ev_code):
+                        last_activity = time.monotonic()
+                        any_event = True
+            except OSError:
+                pass
+
+        # Check idle time
+        idle_time = time.monotonic() - last_activity
+        if idle_time >= IDLE_TIMEOUT and current_level > 0:
+            # Turn off the backlight after 10 min of no key activity
+            set_kbd_backlight(0)
+            current_level = 0
+            save_state(0)
+            print(f"keyboard-idle: idle {IDLE_TIMEOUT}s — backlight off",
+                  file=sys.stderr)
+
+        # Sleep briefly
+        time.sleep(0.5)
+
+    # Cleanup on exit: leave backlight as-is (don't auto-restore)
+
+
+if __name__ == "__main__":
+    main()

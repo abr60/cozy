@@ -1,0 +1,58 @@
+#!/bin/bash
+# =============================================================================
+# hardware/battery-saver — Apply battery-saver dimming/brightness on AC/battery
+# =============================================================================
+
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/helpers.sh"
+
+section "Battery Saver"
+
+if ! has_battery; then
+    warn "No battery detected — skipping battery saver"
+    exit 0
+fi
+
+INSTALL_DIR="${INSTALL_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)}"
+HOOK_SRC="$INSTALL_DIR/hooks/battery-low/persistent-nag"
+
+# Ensure the persistent-nag hook is installed
+if [[ ! -f "$HOOK_SRC" ]]; then
+    warn "Persistent-nag hook not found — installing it now"
+    bash "$INSTALL_DIR/hardware/battery-low-hook.sh"
+fi
+
+# ── Check if we are on AC or battery ─────────────────────────────────────────
+if cozy-ac-present; then
+    # Plugged in: restore any saved levels and use performance profile
+    powerprofilesctl set performance 2>/dev/null || true
+    restore_saver_state
+    ok "On AC — performance profile, brightness restored"
+    exit 0
+fi
+
+# On battery — determine which tier
+local capacity=""
+capacity=$(upower -i $(upower -e | grep 'BAT' | head -n 1) 2>/dev/null | awk '/percentage/ {print $2}' | tr -d '%') || true
+
+if [[ -z "$capacity" || ! "$capacity" =~ ^[0-9]+$ ]]; then
+    warn "Could not read battery capacity — using balanced profile"
+    powerprofilesctl set balanced 2>/dev/null || true
+    exit 0
+fi
+
+if (( capacity >= 30 )); then
+    # Unplugged ≥30%: balanced, dim display to 80% of current, keyboard one step lower
+    powerprofilesctl set balanced 2>/dev/null || true
+    # If currently on battery with our helper having been called, the daemon will
+    # have saved state already. Just ensure we are dimmed.
+    ensure_battery_dimmed 80
+    ensure_kbd_one_step_lower
+    ok "On battery (≥30%) — balanced profile, dimmed display, keyboard lowered"
+else
+    # Unplugged <30%: power-saver, dim display to 60%, keyboard off
+    powerprofilesctl set power-saver 2>/dev/null || true
+    ensure_battery_dimmed 60
+    ensure_kbd_off
+    ok "On battery (<30%) — power-saver profile, display dimmed, keyboard off"
+fi

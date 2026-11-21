@@ -1,0 +1,103 @@
+#!/bin/sh
+# =============================================================================
+# bat-screentime-hook — power / idle event recorder for bat-screentime
+#
+# Installed root:root at /usr/local/bin/bat-screentime-hook and called by:
+#   - udev on every power_supply change:  ... hook reevaluate
+#   - hypridle as the user:              ... hook idle-start|idle-end
+#                                        ... hook screen-off|screen-on
+#
+# Writes:
+#   /var/tmp/unplugged_at                 epoch of the current unplug
+#   /var/tmp/bat-screentime-power.log     "<ts> online|offline <capacity>"
+#   /var/tmp/bat-screentime-power-state   last aggregate state
+#   /var/tmp/bat-screentime-idle.log      "<ts> <event>"
+# =============================================================================
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+set -eu
+umask 022
+
+STAMP=/var/tmp/unplugged_at
+STATE=/var/tmp/bat-screentime-power-state
+POWER_LOG=/var/tmp/bat-screentime-power.log
+IDLE_LOG=/var/tmp/bat-screentime-idle.log
+POWER_SUPPLY=/sys/class/power_supply
+
+battery_capacity() {
+    for battery in "$POWER_SUPPLY"/BAT*; do
+        if [ -r "$battery/capacity" ]; then
+            cat "$battery/capacity"
+            return 0
+        fi
+    done
+    printf '?'
+}
+
+is_device_scope() {
+    if [ -r "$1/scope" ] && [ "$(cat "$1/scope")" = "Device" ]; then
+        return 0
+    fi
+    return 1
+}
+
+any_online() {
+    for supply in "$POWER_SUPPLY"/*; do
+        [ -r "$supply/type" ] || continue
+
+        kind=$(cat "$supply/type" 2>/dev/null || true)
+        case "$kind" in
+            Mains|USB) ;;
+            *) continue ;;
+        esac
+
+        # USB-C ports expose both System and Device scopes. Only System
+        # sources keep the laptop powered.
+        if is_device_scope "$supply"; then
+            continue
+        fi
+
+        if [ "$(cat "$supply/online" 2>/dev/null || printf '0')" = "1" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+reevaluate() {
+    if any_online; then
+        new_state=online
+    else
+        new_state=offline
+    fi
+
+    previous=$(cat "$STATE" 2>/dev/null || true)
+    if [ "$new_state" = "$previous" ]; then
+        return 0
+    fi
+
+    ts=$(date +%s)
+    capacity=$(battery_capacity)
+    printf '%s %s %s\n' "$ts" "$new_state" "$capacity" >> "$POWER_LOG"
+    printf '%s\n' "$new_state" > "$STATE"
+
+    if [ "$new_state" = "offline" ]; then
+        printf '%s\n' "$ts" > "$STAMP"
+    else
+        rm -f "$STAMP"
+    fi
+}
+
+case "${1:-}" in
+    reevaluate)
+        reevaluate
+        ;;
+    idle-start|idle-end|screen-off|screen-on)
+        printf '%s %s\n' "$(date +%s)" "$1" >> "$IDLE_LOG"
+        ;;
+    *)
+        printf 'usage: %s reevaluate|idle-start|idle-end|screen-off|screen-on\n' "$0" >&2
+        exit 2
+        ;;
+esac
