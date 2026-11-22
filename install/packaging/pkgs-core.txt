@@ -37,7 +37,6 @@ vulkan-intel
 intel-media-driver
 sof-firmware
 pipewire-jack
-pavucontrol
 bluez
 bluez-utils
 blueman
@@ -45,7 +44,6 @@ power-profiles-daemon
 fwupd
 
 # --- Applications ---
-firefox
 zathura
 zathura-pdf-mupdf
 mpv
@@ -138,11 +136,9 @@ mpd-mpris
 rmpc
 cava
 blueman
-tlp
-fwupd
+wiremix
 
 # --- Applications ---
-firefox
 zathura
 zathura-pdf-mupdf
 mpv
@@ -211,7 +207,7 @@ bat
 eza
 jq
 
-# --- Android, VPN, Fingerprint, Bengali & Music ---
+# --- Android, VPN/DNS/Firewall, Fingerprint, Bengali & Music ---
 android-tools
 android-udev
 ufw
@@ -227,3 +223,22 @@ mpd
 mpd-mpris
 rmpc
 cava
+blueman
+wiremix
+
+# --- Extra packages (added beyond pkgs-core baseline) ---
+awww
+bluetui
+brave-bin
+fastfetch
+google-chrome
+impala
+swayimg
+opencode
+stow
+python-mutagen
+swayosd
+thinkfan
+thinkfan-cli
+waydroid
+wiremix
