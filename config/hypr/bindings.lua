@@ -44,6 +44,11 @@ a.bind("SUPER + A", "AI Agent", "cozy-agent")
 a.bind("ALT + C", "RMPC Music", "[float; center] foot --title=rmpc-full -e rmpc")
 a.bind("ALT + X", "Study", "[float; size 700 200; center] foot --override=class=Yazi --title=Yazi -e timeout 30s yazi \"$HOME/media/tv/The Eminence in Shadow/Season 01/\"")
 
+-- === Lock OSD ───────────────────────────────────────────────
+a.bind("ALT + P", "Caps Lock OSD", "cozy-swayosd-lock caps", { description = "Toggle Caps Lock OSD", flags = { "l" } })
+a.bind("ALT + L", "Num Lock OSD", "cozy-swayosd-lock num", { description = "Toggle Num Lock OSD", flags = { "l" } })
+a.bind("ALT + K", "Scroll Lock OSD", "cozy-swayosd-lock scroll", { description = "Toggle Scroll Lock OSD", flags = { "l" } })
+
 -- === Wifi QR popup ===
 a.bind("SUPER + Q", "Wifi QR", "[float; size 336 416; move 940 45; pin] foot --title=wifi-qr -e cozy-wifi-qr")
 

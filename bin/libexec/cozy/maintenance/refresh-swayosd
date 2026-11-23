@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# 1. Kill the running SwayOSD daemon instantly
-pkill -x swayosd-server
+# 1. Kill any running SwayOSD daemon instantly
+pkill -x swayosd-server || true
 
-# 2. Restart the daemon cleanly in the background using your custom stylesheet
-# (Using 'setsid' ensures it keeps running even if this script exits)
-setsid swayosd-server -s ~/.config/swayosd/style.css > /dev/null 2>&1 &
+# 2. Restart the daemon cleanly via systemd (theme‑safe, idempotent)
+exec restart-swayosd

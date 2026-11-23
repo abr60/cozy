@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# cozy:summary=Toggle Caps/Num/Scroll lock and show SwayOSD
+# cozy:args=<caps|num|scroll>
+
+lock_type="${1:-caps}"
+
+# Determine the LED sysfs path and swayosd flag
+case "$lock_type" in
+  caps)
+    led_path="/sys/class/leds/input26::capslock"
+    swayosd_flag="--caps-lock"
+    ;;
+  num)
+    led_path="/sys/class/leds/input26::numlock"
+    swayosd_flag="--num-lock"
+    ;;
+  scroll)
+    led_path="/sys/class/leds/input26::scrolllock"
+    swayosd_flag="--scroll-lock"
+    ;;
+  *)
+    echo "Usage: $0 <caps|num|scroll>" >&2
+    exit 1
+    ;;
+esac
+
+# Toggle the LED via wtype
+if [[ -e $led_path ]]; then
+  # LED exists – toggle it off/on by sending keypress
+  case "$lock_type" in
+    caps) key="Caps_Lock" ;;
+    num)  key="Num_Lock" ;;
+    scroll) key="Scroll_Lock" ;;
+  esac
+  wtype -k "$key" >/dev/null 2>&1
+fi
+
+# Show the SwayOSD state
+if command -v swayosd-client >/dev/null 2>&1; then
+  swayosd-client $swayosd_flag >/dev/null 2>&1 &
+fi

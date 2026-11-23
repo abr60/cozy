@@ -16,6 +16,6 @@ fi
 
 brightness-keyboard-mute "$led"
 
-swayosd-client \
+cozy-swayosd-client \
   --custom-message "$osd_message" \
   --custom-icon "$osd_icon"

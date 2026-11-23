@@ -2,5 +2,28 @@
 
 # cozy:summary=Wrapper for swayosd-client that targets the currently focused monitor.
 # cozy:args=<swayosd-client-args...>
+# Strips --duration from user args; internal duration is 2000ms.
 
-exec swayosd-client --monitor "$(hyprland-monitor-focused)" "$@"
+# Ensure the daemon is running
+systemctl --user daemon-reload >/dev/null 2>&1
+systemctl --user is-active swayosd-server.service >/dev/null 2>&1
+if [[ $? -ne 0 ]]; then
+  setsid systemctl --user start swayosd-server.service >/dev/null 2>&1 &
+  # Wait briefly for the socket to appear
+  for i in $(seq 1 30); do
+    systemctl --user is-active swayosd-server.service >/dev/null 2>&1 && break
+    sleep 0.1
+  done
+fi
+
+# Resolve the focused monitor; if Hyprland isn't up yet, keep going
+monitor="$(hyprland-monitor-focused 2>/dev/null)"
+[[ -z $monitor ]] && monitor="DP-1"
+
+# Build arg list without any --duration, then re-append our fixed duration
+filtered=()
+for arg in "$@"; do
+  [[ $arg == --duration ]] && continue
+  filtered+=("$arg")
+done
+exec swayosd-client --monitor "$monitor" --duration 2000 "${filtered[@]}"
