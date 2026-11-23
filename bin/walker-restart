@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# =============================================================================
+# walker-restart — Restart Walker and its Elephant provider
+# =============================================================================
+
+set -uo pipefail
+
+restart_services() {
+    if systemctl --user is-enabled elephant.service >/dev/null 2>&1; then
+        systemctl --user restart elephant.service
+    elif pgrep -x elephant >/dev/null 2>&1; then
+        pkill -x elephant || true
+        setsid uwsm-app -- elephant >/dev/null 2>&1 || setsid elephant >/dev/null 2>&1 || true
+    fi
+
+    if systemctl --user is-enabled app-walker@autostart.service >/dev/null 2>&1; then
+        systemctl --user restart app-walker@autostart.service
+    else
+        pkill -f "walker --gapplication-service" 2>/dev/null || true
+        echo "Walker service is not enabled; start it with walker-launch." >&2
+    fi
+}
+
+if (( EUID == 0 )); then
+    SCRIPT_OWNER=$(stat -c '%U' "$0")
+    USER_UID=$(id -u "$SCRIPT_OWNER")
+    systemd-run --uid="$SCRIPT_OWNER" --setenv=XDG_RUNTIME_DIR="/run/user/$USER_UID" \
+        bash -c "$(declare -f restart_services); restart_services"
+else
+    restart_services
+fi

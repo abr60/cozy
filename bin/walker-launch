@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# =============================================================================
+# walker-launch — Launch Walker and ensure its Elephant data provider is up
+#
+# Usage:
+#   walker-launch              # default app launcher
+#   walker-launch -m symbols   # emoji/symbol picker
+#   walker-launch -m clipboard # clipboard history
+# =============================================================================
+
+set -euo pipefail
+
+# Run a command detached, preferring uwsm-app when available.
+spawn() {
+    if command -v uwsm-app >/dev/null 2>&1; then
+        setsid uwsm-app -- "$@" >/dev/null 2>&1 &
+    else
+        setsid "$@" >/dev/null 2>&1 &
+    fi
+}
+
+# Elephant is the data source Walker queries.
+if ! pgrep -x elephant >/dev/null 2>&1; then
+    spawn elephant
+fi
+
+# Keep the Walker service running so the launcher opens instantly.
+if ! pgrep -f "walker --gapplication-service" >/dev/null 2>&1; then
+    if command -v uwsm-app >/dev/null 2>&1; then
+        setsid uwsm-app -- env GSK_RENDERER=cairo walker --gapplication-service >/dev/null 2>&1 &
+    else
+        setsid env GSK_RENDERER=cairo walker --gapplication-service >/dev/null 2>&1 &
+    fi
+fi
+
+exec walker --width 644 --maxheight 300 --minheight 300 "$@"

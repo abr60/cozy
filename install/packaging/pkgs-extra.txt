@@ -41,6 +41,26 @@ yt-dlp
 python-mutagen    # Cover art for Opus/FLAC downloads
 
 # --- Applications ---
+walker-bin                      # Walker launcher (AUR)
+elephant-bin                    # Walker data provider daemon (AUR)
+elephant-desktopapplications-bin
+elephant-providerlist-bin
+elephant-calc-bin
+elephant-symbols-bin
+elephant-clipboard-bin
+elephant-files-bin
+elephant-menus-bin
+elephant-websearch-bin
+elephant-runner-bin
+elephant-windows-bin
+elephant-playerctl-bin
+elephant-bluetooth-bin
+elephant-wireplumber-bin
+elephant-bookmarks-bin
+elephant-archlinuxpkgs-bin
+elephant-snippets-bin
+elephant-todo-bin
+elephant-unicode-bin
 obsidian
 telegram-desktop
 signal-desktop

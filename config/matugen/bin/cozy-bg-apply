@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# =============================================================================
+# cozy-bg-apply — Non-interactive wallpaper apply (used by Walker menus)
+#
+# Applies a wallpaper to the current theme and refreshes colors via matugen.
+# Mirrors what rofi-set-bg does after a pick, without opening a picker.
+# =============================================================================
+
+set -uo pipefail
+
+if [[ -z ${1:-} ]]; then
+    echo "Usage: cozy-bg-apply <path-to-image>" >&2
+    exit 1
+fi
+
+BACKGROUND="$(realpath "$1" 2>/dev/null || true)"
+STATE_DIR="$HOME/.local/state/Cozy"
+SCRIPTS_DIR="$HOME/.config/matugen/bin"
+
+if [[ -z $BACKGROUND || ! -f $BACKGROUND ]]; then
+    notify-send "Cozy" "Wallpaper not found: $1" 2>/dev/null || true
+    exit 1
+fi
+
+mkdir -p "$STATE_DIR"
+ln -nsf --relative "$BACKGROUND" "$STATE_DIR/current-wallpaper"
+
+"$SCRIPTS_DIR/wallpaper-apply" "$STATE_DIR/current-wallpaper" || exit $?
+
+MODE=$(cat "$STATE_DIR/current-mode" 2>/dev/null || echo "dark")
+"$SCRIPTS_DIR/cozy-set-mode" "$MODE"

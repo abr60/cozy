@@ -1,7 +1,7 @@
-force_keyboard_focus = true                                                 # forces keyboard forcus to stay in Walker
+force_keyboard_focus = true                                                 # forces keyboard focus to stay in Walker
 selection_wrap = true                                                       # wrap list if at bottom or top
-theme = "default"                                                   # theme to use
-additional_theme_location = "~/.config/walker/themes/default"
+theme = "cozy"                                                              # theme to use
+additional_theme_location = "~/.config/walker/themes/"                      # theme directory
 hide_action_hints = true                                                    # globally hide the action hints
 
 [placeholders]
@@ -46,4 +46,4 @@ provider = "clipboard"
 
 [[emergencies]]
 text = "Restart Walker"
-command = "restart-walker"
+command = "walker-restart"

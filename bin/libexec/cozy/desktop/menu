@@ -18,10 +18,14 @@ back_to() {
 }
 
 toggle_existing_menu() {
-  if pgrep -f "rofi.*-dmenu" >/dev/null; then
-    pkill -f "rofi.*-dmenu"
-    exit 0
-  fi
+  local pid
+
+  for pid in $(pgrep -x walker); do
+    if tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null | grep -q -- '--dmenu'; then
+      kill "$pid"
+      exit 0
+    fi
+  done
 }
 
 menu() {
@@ -36,11 +40,11 @@ menu() {
     local index
     index=$(echo -e "$options" | grep -nxF "$preselect" | cut -d: -f1)
     if [[ -n $index ]]; then
-      args+=("-selected-row" "$((index - 1))")
+      args+=("-c" "$index")
     fi
   fi
 
-  echo -e "$options" | rofi -dmenu -p "$prompt…" -theme-str 'window {width: 295px;} listview {lines: 15;}' "${args[@]}" 2>/dev/null
+  echo -e "$options" | walker-dmenu --width 295 --minheight 1 --maxheight 630 -p "$prompt…" "${args[@]}" 2>/dev/null
 }
 
 terminal() {
@@ -309,17 +313,15 @@ show_about_menu() {
 }
 
 show_theme_menu() {
-  theme=$(theme-switcher)
-  [[ -n $theme ]] && theme-set "$theme"
+  walker-launch -m menus:cozythemes --width 800 --minheight 400
 }
 
 show_background_menu() {
-  background=$(theme-bg-switcher)
-  [[ -n $background ]] && theme-bg-set "$background"
+  walker-launch -m menus:cozybackgrounds --width 800 --minheight 400
 }
 
 show_font_menu() {
-  theme=$(menu "Font" "$(font-list)" "--theme-str 'window {width: 350px;}'" "$(font-current)")
+  theme=$(menu "Font" "$(font-list)" "--width 350" "$(font-current)")
   if [[ $theme == "CNCLD" || -z $theme ]]; then
     back_to show_style_menu
   else
@@ -487,13 +489,14 @@ show_setup_default_editor_menu() {
 }
 
 show_setup_config_menu() {
-  case $(menu "Setup" "  Hyprland\n  Hypridle\n  Hyprlock\n  Hyprsunset\n  Swayosd\n󰍜  Waybar\n󰌧  Rofi\n󰞅  XCompose") in
+  case $(menu "Setup" "  Hyprland\n  Hypridle\n  Hyprlock\n  Hyprsunset\n  Swayosd\n󰍜  Waybar\n󰌧  Rofi\n󰀻  Walker\n󰞅  XCompose") in
   *Hyprland*) open_in_editor "$(hypr_config_file hyprland)" ;;
   *Hypridle*) open_in_editor ~/.config/hypr/hypridle.conf && restart-hypridle ;;
   *Hyprlock*) open_in_editor ~/.config/hypr/hyprlock.conf ;;
   *Hyprsunset*) open_in_editor ~/.config/hypr/hyprsunset.conf && restart-hyprsunset ;;
   *Swayosd*) open_in_editor ~/.config/swayosd/config.toml && restart-swayosd ;;
   *Rofi*) open_in_editor ~/.config/rofi/config.rasi ;;
+  *Walker*) open_in_editor ~/.config/walker/config.toml && walker-restart ;;
   *Waybar*) open_in_editor ~/.config/waybar/config.jsonc && restart-waybar ;;
   *XCompose*) open_in_editor ~/.XCompose && restart-xcompose ;;
   *) show_setup_menu ;;
@@ -820,19 +823,20 @@ show_update_channel_menu() {
 }
 
 show_update_process_menu() {
-  case $(menu "Restart" "  Hypridle\n  Hyprsunset\n󰎟  Mako\n  Swayosd\n󰌧  Rofi\n󰍜  Waybar") in
+  case $(menu "Restart" "  Hypridle\n  Hyprsunset\n󰎟  Mako\n  Swayosd\n󰌧  Rofi\n󰀻  Walker\n󰍜  Waybar") in
   *Hypridle*) restart-hypridle ;;
   *Hyprsunset*) restart-hyprsunset ;;
   *Mako*) restart-mako ;;
   *Swayosd*) restart-swayosd ;;
   *Rofi*) pkill rofi ;;
+  *Walker*) walker-restart ;;
   *Waybar*) restart-waybar ;;
   *) show_update_menu ;;
   esac
 }
 
 show_update_config_menu() {
-  case $(menu "Use default config" "  Hyprland\n  Hypridle\n  Hyprlock\n  Hyprsunset\n󱣴  Plymouth\n  Swayosd\n  Tmux\n󰌧  Rofi\n󰍜  Waybar") in
+  case $(menu "Use default config" "  Hyprland\n  Hypridle\n  Hyprlock\n  Hyprsunset\n󱣴  Plymouth\n  Swayosd\n  Tmux\n󰌧  Rofi\n󰀻  Walker\n󰍜  Waybar") in
   *Hyprland*) present_terminal refresh-hyprland ;;
   *Hypridle*) present_terminal refresh-hypridle ;;
   *Hyprlock*) present_terminal refresh-hyprlock ;;
@@ -841,6 +845,7 @@ show_update_config_menu() {
   *Swayosd*) present_terminal refresh-swayosd ;;
   *Tmux*) present_terminal refresh-tmux ;;
   *Rofi*) present_terminal refresh-rofi ;;
+  *Walker*) present_terminal walker-refresh ;;
   *Waybar*) present_terminal refresh-waybar ;;
   *) show_update_menu ;;
   esac
@@ -891,7 +896,7 @@ show_main_menu() {
 
 go_to_menu() {
   case "${1,,}" in
-  *apps*) rofi -show drun ;;
+  *apps*) walker-launch -p "Launch…" ;;
   *learn*) show_learn_menu ;;
   *trigger*) show_trigger_menu ;;
   *toggle*) show_toggle_menu ;;

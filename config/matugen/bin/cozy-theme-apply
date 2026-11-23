@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# =============================================================================
+# cozy-theme-apply — Non-interactive theme apply (used by Walker menus)
+#
+# Saves the theme, picks a random wallpaper from its Walls/ directory, applies
+# it, then hands off to the matugen color pipeline. Mirrors what rofi-set-theme
+# does after a pick, without opening a picker.
+# =============================================================================
+
+set -uo pipefail
+
+if [[ -z ${1:-} ]]; then
+    echo "Usage: cozy-theme-apply <theme-name>" >&2
+    exit 1
+fi
+
+THEME_NAME="$1"
+THEMES_DIR="$HOME/.local/share/Cozy/Themes"
+USER_THEMES_DIR="$HOME/.config/Cozy/themes"
+STATE_DIR="$HOME/.local/state/Cozy"
+SCRIPTS_DIR="$HOME/.config/matugen/bin"
+
+# Resolve the theme directory case-insensitively, checking official then user.
+THEME_DIR=""
+for base in "$THEMES_DIR" "$USER_THEMES_DIR"; do
+    [[ -d $base ]] || continue
+    if [[ -d $base/$THEME_NAME ]]; then
+        THEME_DIR="$base/$THEME_NAME"
+        break
+    fi
+    match=$(find -L "$base" -mindepth 1 -maxdepth 1 -type d -iname "$THEME_NAME" -print -quit 2>/dev/null)
+    if [[ -n $match ]]; then
+        THEME_DIR="$match"
+        break
+    fi
+done
+
+if [[ -z $THEME_DIR ]]; then
+    notify-send "Cozy" "Theme '$THEME_NAME' not found" 2>/dev/null || true
+    exit 1
+fi
+
+THEME_NAME="$(basename "$THEME_DIR")"
+mkdir -p "$STATE_DIR"
+echo "$THEME_NAME" >"$STATE_DIR/current-theme"
+
+# Pick a random wallpaper from the theme.
+BG_DIR="$THEME_DIR/Walls"
+mapfile -t WALLS < <(
+    find -L "$BG_DIR" -maxdepth 1 -type f \
+        \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \
+           -o -iname "*.webp" -o -iname "*.gif" \) 2>/dev/null | sort
+)
+
+if [[ ${#WALLS[@]} -eq 0 ]]; then
+    notify-send "Cozy" "No wallpapers found in '$THEME_NAME'" 2>/dev/null || true
+    exit 1
+fi
+
+RANDOM_WALL="${WALLS[$RANDOM % ${#WALLS[@]}]}"
+ln -nsf --relative "$RANDOM_WALL" "$STATE_DIR/current-wallpaper"
+
+"$SCRIPTS_DIR/wallpaper-apply" "$STATE_DIR/current-wallpaper" || exit $?
+
+MODE=$(cat "$STATE_DIR/current-mode" 2>/dev/null || echo "dark")
+"$SCRIPTS_DIR/cozy-set-mode" "$MODE"

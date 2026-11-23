@@ -1,7 +1,7 @@
 -- Personal keybinding overrides and additions.
 
 -- === UI ===
-a.bind("SUPER + SPACE",     "Applications launcher",  "rofi-applications")
+a.bind("SUPER + SPACE",     "Applications launcher",  "walker-launch")
 a.bind("SUPER + ALT + RETURN", "Tmux",               a.launch("xdg-terminal-exec --dir=\"$(cmd-terminal-cwd)\" bash -c \"tmux attach || tmux new -s Work\""))
 a.bind("XF86Favorites", "Documents", a.launch("zathura"))
 a.bind("SUPER + B",        "waybar-theme",   a.launch("waybar-theme"))
@@ -24,8 +24,12 @@ a.bind("ALT + Z",     "Dictation",       "voxtype record toggle")
 -- === Emoji ===
 hl.unbind("SUPER + CTRL + E")
 hl.unbind("SUPER + period")
-a.bind("SUPER + CTRL + E", "Emoji picker", "rofi-emoji")
-a.bind("SUPER + period",   "Emoji",        "rofi-emoji")
+a.bind("SUPER + CTRL + E", "Emoji picker", "walker-launch -m symbols")
+a.bind("SUPER + period",   "Emoji",        "walker-launch -m symbols")
+
+-- === Clipboard ===
+hl.unbind("SUPER + CTRL + V")
+a.bind("SUPER + CTRL + V", "Clipboard history", "walker-launch -m clipboard")
 
 -- === Special Keys ===
 a.bind("XF86NotificationCenter", "WhatsApp", { webapp = "https://web.whatsapp.com/", focus = true })

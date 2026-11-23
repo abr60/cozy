@@ -110,10 +110,13 @@ post_hook = 'pgrep -x spotify >/dev/null && spicetify watch -s & sleep 0.5 && pk
 
 # ─── Disabled ─────────────────────────────────────────────────────────────────
 
+[templates.walker]
+input_path  = "~/.config/matugen/templates/walker.css"
+output_path = "~/.config/walker/themes/cozy/matugen.css"
+
 #[templates.swaync]
 
 #[templates.mako]
-#[templates.walker]
 #[templates.ghostty]
 
 #[templates.wlogout]

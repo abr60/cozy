@@ -11,5 +11,5 @@ Key rules:
 
 - Edit files in this repo, not the stowed copies under `~/.config/`.
 - Shell scripts must stay `bash -n` clean; Lua configs must stay `luac -p` clean.
-- The Rofi menu lives in `bin/menu`; agent install/launch entries live under Install → AI → Coding Agents.
+- The Cozy menu lives in `bin/menu` (Walker; symlink to `bin/libexec/cozy/desktop/menu`); Rofi remains installed for its standalone utilities. Agent install/launch entries live under Install → AI → Coding Agents.
 - `install/login/agents.sh` links this skill into every supported agent skill directory, including OpenCode, Gemini, Codex, Claude, Pi, and Hermes.

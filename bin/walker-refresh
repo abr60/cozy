@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# =============================================================================
+# walker-refresh — Re-deploy Walker/Elephant configs and restart the services
+# =============================================================================
+
+set -euo pipefail
+
+COZY_PATH="${COZY_PATH:-$HOME/.local/share/Cozy}"
+CONFIG_DEST="$HOME/.config"
+
+if [[ ! -d $COZY_PATH/config/walker ]]; then
+    echo "Cozy config not found at $COZY_PATH/config/walker" >&2
+    exit 1
+fi
+
+# Copy only when source and destination are not already the same file
+# (Cozy stows these directories as symlinks into the repo).
+ensure_copy() {
+    local src="$1" dest="$2"
+    if [[ "$(readlink -f "$src")" != "$(readlink -f "$dest" 2>/dev/null)" ]]; then
+        cp -f "$src" "$dest"
+    fi
+}
+
+# Autostart entry (stowed normally; copy if the target is a real file/dir).
+mkdir -p "$CONFIG_DEST/autostart"
+ensure_copy "$COZY_PATH/config/autostart/walker.desktop" "$CONFIG_DEST/autostart/walker.desktop"
+
+# Restart-on-crash drop-in for the autostart service.
+dropin_dir="$CONFIG_DEST/systemd/user/app-walker@autostart.service.d"
+mkdir -p "$dropin_dir"
+ensure_copy "$COZY_PATH/config/systemd/user/app-walker@autostart.service.d/restart.conf" "$dropin_dir/restart.conf"
+
+systemctl --user daemon-reload
+
+# Link the Cozy Elephant menus (themes + backgrounds) when the config dir is
+# not already stowed/symlinked into the repo.
+elephant_dest="$CONFIG_DEST/elephant"
+elephant_src="$COZY_PATH/config/elephant"
+if [[ -d $elephant_src/menus ]]; then
+    if [[ "$(readlink -f "$elephant_dest" 2>/dev/null)" != "$(readlink -f "$elephant_src")" ]]; then
+        mkdir -p "$elephant_dest/menus"
+        for menu in "$elephant_src/menus"/*.lua; do
+            [[ -e $menu ]] || continue
+            ln -sfn --relative "$menu" "$elephant_dest/menus/$(basename "$menu")"
+        done
+    fi
+fi
+
+walker-restart

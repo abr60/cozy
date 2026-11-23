@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# cozy:summary=Show a Walker dmenu prompt without relying on the Walker service.
+# cozy:group=menu
+# cozy:name=dmenu
+# cozy:args=[walker dmenu args...]
+# cozy:examples=printf 'one\ntwo\n' | walker-dmenu -p 'Pick…'
+
+set -euo pipefail
+
+# Walker 2.17.2 segfaults when its GApplication service handles --dmenu.
+# Run dmenu on a private session bus so Walker starts standalone instead of
+# forwarding the request to the long-running service. The minimal bus config
+# deliberately omits service activation, which keeps portal processes from
+# being spawned and left behind. FD 3 keeps the selection separate from logs.
+if ! command -v dbus-run-session >/dev/null 2>&1; then
+  exec walker --dmenu "$@"
+fi
+
+bus_config=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/cozy-walker-dmenu.XXXXXX.conf")
+trap 'rm -f "$bus_config"' EXIT
+
+cat >"$bus_config" <<'EOF'
+<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<busconfig>
+  <type>session</type>
+  <listen>unix:tmpdir=/tmp</listen>
+  <auth>EXTERNAL</auth>
+  <policy context="default">
+    <allow send_destination="*" eavesdrop="true"/>
+    <allow eavesdrop="true"/>
+    <allow own="*"/>
+  </policy>
+</busconfig>
+EOF
+
+exec 3>&1
+dbus-run-session --config-file="$bus_config" -- bash -c 'exec walker --dmenu "$@" >&3' _ "$@" >/dev/null 2>/dev/null

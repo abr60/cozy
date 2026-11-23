@@ -3,10 +3,10 @@ name: cozy
 description: >
   REQUIRED for the user's Cozy Arch Linux + Hyprland dotfiles and system config.
   Use when editing ~/.config/hypr/, ~/.config/waybar/, ~/.config/rofi/,
-  or any file in ~/.config/ on a Cozy system, or when working inside
+  ~/.config/walker/, or any file in ~/.config/ on a Cozy system, or when working inside
   the Cozy repo at $COZY_PATH / ~/.local/share/Cozy.
   Triggers: Hyprland, window rules, animations, keybindings, monitors,
-  gaps, borders, blur, opacity, Waybar, Rofi menu, themes, background,
+  gaps, borders, blur, opacity, Waybar, Walker launcher/menu, Rofi utilities, themes, background,
   night light, idle, lock screen, screenshots, reminders, layer rules,
   workspace settings, display config, Limine, Plymouth, LUKS, and
   user-facing `cozy` commands.
@@ -26,7 +26,8 @@ Cozy is exposed at `$COZY_PATH` (default `~/.local/share/Cozy`, also exported as
 
 - Editing ANY file in `~/.config/hypr/` (hyprland.lua, bindings.lua, monitors.lua, input.lua, looknfeel.lua, autostart.lua, hypridle/hyprlock/hyprsunset configs)
 - Editing `~/.config/waybar/` (bar layout, modules)
-- Editing `~/.config/rofi/` or the Cozy menu (`$COZY_PATH/bin/menu`)
+- Editing `~/.config/rofi/` or Rofi utilities
+- Editing the Cozy menu (`$COZY_PATH/bin/menu`), `~/.config/walker/`, or Elephant providers (`config/elephant/`)
 - Editing ANY file in `~/.config/` on a Cozy system
 - Window behavior, animations, opacity, blur, gaps, borders, workspaces
 - Themes, backgrounds, fonts, appearance (`bin/theme-*`, `bin/theme-bg-*`, `bin/font-*`)
@@ -43,7 +44,7 @@ Deeper instructions live next to this file. Read the matching guide before start
 - [`hyprland.md`](hyprland.md) — keybindings, monitors, window rules, Hyprland Lua config
 - [`waybar.md`](waybar.md) — Waybar layout, modules, styling
 - [`theming.md`](theming.md) — themes, backgrounds, fonts
-- [`menu.md`](menu.md) — Rofi menu (`bin/menu`), command dispatcher (`bin/cozy` / `bin/cozy-*/`)
+- [`menu.md`](menu.md) — Walker menu (`bin/menu`), command dispatcher (`bin/cozy` / `bin/cozy-*/`)
 - [`boot.md`](boot.md) — Limine + LUKS + Plymouth + mkinitcpio
 - [`contributing.md`](contributing.md) — hacking on the Cozy repo itself
 
@@ -66,7 +67,7 @@ $COZY_PATH/                        # EDIT HERE (git repo, then update.sh)
 **Safe edit locations:**
 - `$COZY_PATH/config/<app>/` — dotfiles (stowed to `~/.config/`)
 - `$COZY_PATH/default/agents/skills/cozy/` — this skill itself
-- `$COZY_PATH/bin/menu` — Rofi menu structure
+- `$COZY_PATH/bin/menu` — Walker menu structure (symlink to `bin/libexec/cozy/desktop/menu`)
 - `~/.config/` — live user config (overwritten by `update.sh` re-apply, so prefer editing the repo)
 
 ## Privilege Escalation
@@ -80,7 +81,8 @@ Interactive terminal work → `sudo`. Non-interactive / agent-launched → `pkex
 | **Arch Linux** | Base OS | `/etc/`, `~/.config/` |
 | **Hyprland** | Wayland compositor | `~/.config/hypr/*.lua` + `hypr*.conf` |
 | **Waybar** | Status bar | `~/.config/waybar/` |
-| **Rofi** | App launcher + Cozy menu | `~/.config/rofi/`, `bin/menu` |
+| **Rofi** | Retained utilities (power menu, emoji, clipboard) | `~/.config/rofi/`, `bin/rofi-*` |
+| **Walker** | App launcher + Cozy menu | `~/.config/walker/`, `config/elephant/`, `bin/menu` |
 | **Ly** | Display manager | `/etc/ly/config.ini`, `ly@ttyX.service` |
 | **Limine** | Bootloader (with LUKS) | `/boot/limine.conf`, `/etc/kernel/cmdline`, `/etc/limine-entry-tool.d/` |
 | **Plymouth** | Boot splash | `/usr/share/plymouth/themes/cozy/`, `/etc/plymouth/plymouthd.conf` |
