@@ -1,9 +1,9 @@
-background-color=#251d21ff
-text-color=#eedfe4ff
+background-color=#1e201cff
+text-color=#e2e3dcff
 # Changed from 00 to cc for a subtle, visible outline
-border-color=#9f8b94cc
-progress-color=over #ffaedacc
+border-color=#8c9387cc
+progress-color=over #a7d295cc
 
 [urgency=high]
-background-color=#251d21ff
+background-color=#1e201cff
 border-color=#ffb4abff
