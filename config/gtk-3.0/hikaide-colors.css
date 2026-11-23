@@ -4,25 +4,25 @@
 */
 
 /* Base / surface */
-@define-color haku_base #121410;
-@define-color haku_sidebar #1a1c18;
-@define-color haku_surface #121410;
-@define-color haku_hover alpha(#e2e3dc, 0.15);
-@define-color haku_active alpha(#e2e3dc, 0.25);
-@define-color haku_selection #a7d295;
-@define-color haku_selection_backdrop alpha(#a7d295, 0.12);
+@define-color haku_base #171211;
+@define-color haku_sidebar #1f1b19;
+@define-color haku_surface #171211;
+@define-color haku_hover alpha(#ebe0dd, 0.15);
+@define-color haku_active alpha(#ebe0dd, 0.25);
+@define-color haku_selection #f3ba9e;
+@define-color haku_selection_backdrop alpha(#f3ba9e, 0.12);
 
 /* Text / foreground */
-@define-color haku_fg #e2e3dc;
-@define-color haku_secondary #c2c9bb;
-@define-color haku_disabled #e2e3dc;
-@define-color haku_focus #282b26;
+@define-color haku_fg #ebe0dd;
+@define-color haku_secondary #d5c3bb;
+@define-color haku_disabled #ebe0dd;
+@define-color haku_focus #2e2927;
 
 /* Interaction states */
-@define-color haku_hover #0c0f0b;
-@define-color haku_view_hover alpha(#0c0f0b, 0.07);
-@define-color haku_view_selected alpha(#a7d295, 0.11);
-@define-color haku_view_backdrop alpha(#1a1c18, 0.08);
+@define-color haku_hover #110d0b;
+@define-color haku_view_hover alpha(#110d0b, 0.07);
+@define-color haku_view_selected alpha(#f3ba9e, 0.11);
+@define-color haku_view_backdrop alpha(#1f1b19, 0.08);
 
 /* Reserved (never decorative) */
 @define-color error_color #e09b9b;
