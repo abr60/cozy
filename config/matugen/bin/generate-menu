@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
 # generate-menu.sh — Scan dirs and regenerate the waybar GTK popup menu XML
-# Output: ~/.config/waybar/menu.xml
+# Output: ~/.config/waybar/menu/style-menu.xml
 # =============================================================================
 
 THEMES_DIR="$HOME/.local/share/Cozy/Themes"
 ANIM_DIR="$HOME/.config/hypr/animations"
-WAYBAR_CSS_DIR="$HOME/.config/waybar/css"
-LAYOUTS_DIR="$HOME/.config/waybar/layouts"
-STATE_DIR="$HOME/.local/state/Cozy"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/Cozy"
 SCRIPTS_DIR="$HOME/.config/matugen/bin"
 OUTPUT="$HOME/.config/waybar/menu/style-menu.xml"
 
@@ -25,11 +23,13 @@ mapfile -t THEMES < <(find "$THEMES_DIR" -mindepth 1 -maxdepth 1 -type d | sort 
 # ─── Scan animations ──────────────────────────────────────────────────────────
 mapfile -t ANIMS < <(find "$ANIM_DIR" -maxdepth 1 -type f -name "*.lua" | sort | xargs -I{} basename {} .lua)
 
-# ─── Scan waybar CSS styles ───────────────────────────────────────────────────
-mapfile -t STYLES < <(find "$WAYBAR_CSS_DIR" -maxdepth 1 -name "*.css" | sort | xargs -I{} basename {} .css)
-
-# ─── Scan waybar Layouts styles ───────────────────────────────────────────────────
-mapfile -t LAYOUTS < <(find "$LAYOUTS_DIR" -maxdepth 1 -name "*.jsonc" | sort | xargs -I{} basename {} .jsonc)
+# ─── Waybar styles & positions (explicit; order is menu order) ────────────────
+STYLES=(minimal intricate)
+STYLE_LABELS=(Minimal Intricate)
+LAYOUTS=(top bottom left right)
+LAYOUT_LABELS=(top bottom left right)
+CURRENT_STYLE=$(cat "$STATE_DIR/waybar-style" 2>/dev/null || echo "minimal")
+CURRENT_POSITION=$(cat "$STATE_DIR/waybar-position" 2>/dev/null || echo "top")
 
 # ─── Current mode ─────────────────────────────────────────────────────────────
 CURRENT_MODE=$(cat "$STATE_DIR/current-mode" 2>/dev/null || echo "dark")
@@ -157,7 +157,7 @@ cat >> "$OUTPUT" << 'EOF'
 
 EOF
 
-# ─── 6. WAYBAR STYLE (scanned) ────────────────────────────────────────────────
+# ─── 6. WAYBAR STYLE (explicit) ───────────────────────────────────────────────
 echo "    <!-- ── WAYBAR STYLE ──────────────────────────────────────────────────────── -->" >> "$OUTPUT"
 echo "    <child>" >> "$OUTPUT"
 echo "      <object class=\"GtkMenuItem\" id=\"waybar_menu\">" >> "$OUTPUT"
@@ -165,10 +165,13 @@ echo "        <property name=\"label\">󰫇  Waybar Style</property>" >> "$OUTPU
 echo "        <child type=\"submenu\">" >> "$OUTPUT"
 echo "          <object class=\"GtkMenu\">" >> "$OUTPUT"
 
-for style in "${STYLES[@]}"; do
-    label=$(xml_escape "$style")
-    id="waybar_style_$(echo "$style" | tr '[:upper:] ' '[:lower:]_' | tr -cd '[:alnum:]_')"
-    echo "            <child><object class=\"GtkMenuItem\" id=\"${id}\"><property name=\"label\">  ${label}</property></object></child>" >> "$OUTPUT"
+for i in "${!STYLES[@]}"; do
+    style="${STYLES[$i]}"
+    label=$(xml_escape "${STYLE_LABELS[$i]}")
+    active_marker=""
+    [[ "$style" == "$CURRENT_STYLE" ]] && active_marker="  ✓"
+    id="waybar_style_${style}"
+    echo "            <child><object class=\"GtkMenuItem\" id=\"${id}\"><property name=\"label\">  ${label}${active_marker}</property></object></child>" >> "$OUTPUT"
 done
 
 cat >> "$OUTPUT" << 'EOF'
@@ -179,7 +182,7 @@ cat >> "$OUTPUT" << 'EOF'
 
 EOF
 
-# ─── 7. WAYBAR POSITION (scanned) ─────────────────────────────────────────────
+# ─── 7. WAYBAR POSITION (explicit) ────────────────────────────────────────────
 echo "    <!-- ── WAYBAR POSITION ────────────────────────────────────────────────── -->" >> "$OUTPUT"
 echo "    <child>" >> "$OUTPUT"
 echo "      <object class=\"GtkMenuItem\" id=\"layout_menu\">" >> "$OUTPUT"
@@ -187,10 +190,13 @@ echo "        <property name=\"label\">󱂬  Waybar Position</property>" >> "$OU
 echo "        <child type=\"submenu\">" >> "$OUTPUT"
 echo "          <object class=\"GtkMenu\">" >> "$OUTPUT"
 
-for layout in "${LAYOUTS[@]}"; do
-    label=$(xml_escape "$layout")
-    id="waybar_$(echo "$layout" | sed 's/^layout-//' | tr '[:upper:] ' '[:lower:]_' | tr -cd '[:alnum:]_')"
-    echo "            <child><object class=\"GtkMenuItem\" id=\"${id}\"><property name=\"label\">󱂬  ${label}</property></object></child>" >> "$OUTPUT"
+for i in "${!LAYOUTS[@]}"; do
+    layout="${LAYOUTS[$i]}"
+    label=$(xml_escape "${LAYOUT_LABELS[$i]}")
+    active_marker=""
+    [[ "$layout" == "$CURRENT_POSITION" ]] && active_marker="  ✓"
+    id="waybar_${layout}"
+    echo "            <child><object class=\"GtkMenuItem\" id=\"${id}\"><property name=\"label\">󱂬  ${label}${active_marker}</property></object></child>" >> "$OUTPUT"
 done
 
 cat >> "$OUTPUT" << 'EOF'

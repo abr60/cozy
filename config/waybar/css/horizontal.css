@@ -1,0 +1,10 @@
+/* =========================================================
+   horizontal.css — top / bottom bar refinements.
+   Keeps the shared horizontal rhythm explicit so vertical.css
+   can override it cleanly.
+   ========================================================= */
+
+/* Horizontal bars use the shared rhythm from spacing.css and each
+   style's own padding from minimal.css / intricate.css. Keep this
+   layer free of duplicates so style spacing is not overridden. */
+

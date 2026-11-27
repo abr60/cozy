@@ -1,0 +1,64 @@
+/* =========================================================
+   spacing.css — one 4px rhythm for both styles.
+   Horizontal is the default; vertical.css overrides the
+   directional values for left/right bars.
+   ========================================================= */
+
+/* Bar content padding (horizontal default) */
+window#waybar > box {
+  padding: 0 8px;
+  margin: 0;
+}
+
+/* Shared module rhythm */
+#custom-menu,
+#custom-separator,
+#mpris,
+#temperature,
+#custom-weather,
+#custom-updatespacman,
+#custom-timer,
+#custom-mako,
+#custom-hdd,
+#custom-screenrecording-indicator,
+#custom-voxtype,
+#tray,
+#custom-notification-silencing-indicator,
+#bluetooth,
+#network,
+#backlight,
+#pulseaudio,
+#custom-power,
+#custom-display-scale,
+#clock,
+#custom-vpn,
+#custom-idle-indicator,
+#custom-lens,
+#power-profiles-daemon,
+#battery,
+#cpu,
+#memory,
+#custom-expand-icon {
+  padding: 0 8px;
+  margin: 0 1px;
+}
+
+/* Group containers and their children are styled by each visual
+   theme: Minimal keeps flat edge-to-edge groups, Intricate adds its
+   own M3 group margins/padding. */
+
+#workspaces {
+  margin: 0;
+  padding: 0;
+}
+
+#workspaces button {
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0 8px;
+  margin: 0;
+}
+
+/* Menu and tooltip rhythm belongs to each style file so Minimal and
+   Intricate keep their distinct, hand-tuned GTK popup spacing. */
+

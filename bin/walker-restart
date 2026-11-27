@@ -13,11 +13,16 @@ restart_services() {
         setsid uwsm-app -- elephant >/dev/null 2>&1 || setsid elephant >/dev/null 2>&1 || true
     fi
 
-    if systemctl --user is-enabled app-walker@autostart.service >/dev/null 2>&1; then
-        systemctl --user restart app-walker@autostart.service
+    local walker_unit=app-walker@autostart.service
+    # The XDG autostart unit is "generated", not enabled in the usual sense.
+    # Detect it by loaded unit as well so we never kill its process and let a
+    # separate manual service fight it for the dev.benz.walker bus name.
+    if systemctl --user list-units --all --no-legend "$walker_unit" 2>/dev/null | grep -q . ||
+       systemctl --user is-enabled "$walker_unit" >/dev/null 2>&1; then
+        systemctl --user restart "$walker_unit" 2>/dev/null || true
     else
-        pkill -f "walker --gapplication-service" 2>/dev/null || true
-        echo "Walker service is not enabled; start it with walker-launch." >&2
+        pkill -x walker 2>/dev/null || true
+        echo "Walker service is not available; start it with walker-launch." >&2
     fi
 }
 

@@ -84,7 +84,7 @@ Interactive terminal work → `sudo`. Non-interactive / agent-launched → `pkex
 | **Rofi** | Retained utilities (power menu, emoji, clipboard) | `~/.config/rofi/`, `bin/rofi-*` |
 | **Walker** | App launcher + Cozy menu | `~/.config/walker/`, `config/elephant/`, `bin/menu` |
 | **Ly** | Display manager | `/etc/ly/config.ini`, `ly@ttyX.service` |
-| **Limine** | Bootloader (with LUKS) | `/boot/limine.conf`, `/etc/kernel/cmdline`, `/etc/limine-entry-tool.d/` |
+| **Limine** | Bootloader (with LUKS/snapshots) | `/boot/limine.conf`, `/etc/default/limine`, `/etc/limine-entry-tool.d/` |
 | **Plymouth** | Boot splash | `/usr/share/plymouth/themes/cozy/`, `/etc/plymouth/plymouthd.conf` |
 | **Alacritty/Foot/Ghostty/Kitty** | Terminals | `~/.config/<terminal>/` |
 

@@ -1,0 +1,188 @@
+{
+  // Included first by the vertical layouts, so these complete module
+  // objects take precedence over the shared definitions.
+
+  "custom/separator": {
+    "format": "",
+    "tooltip": false
+  },
+
+  "mpris": {
+    "justify": "center",
+    "rotate": 90,
+    "format": "{artist} - {title}",
+    "format-paused": "<span color='grey'>{status_icon}</span>",
+    "max-length": 25,
+    "player-icons": {
+      "default": "⏸",
+      "mpv": "🎵"
+    },
+    "status-icons": {
+      "paused": "󰝛"
+    },
+    "ignored-players": ["firefox", "chromium", "brave"],
+    "on-click": "playerctl play-pause",
+    "on-click-right": "timeout 60s kitty --class kitty --title rmpc -e rmpc",
+    "on-scroll-up": "playerctl next",
+    "on-scroll-down": "playerctl previous",
+    "tooltip": true,
+    "tooltip-format": "App Target: {player}\nArtist: {artist}\nTitle: {title}\nAlbum: {album}\nStatus: {status}"
+  },
+
+  "clock": {
+    "justify": "center",
+    "format": "{:%I:%M}",
+    "format-alt": "<span weight='900'>{:%d/%m %I:%M}</span>",
+    "tooltip-format": "<tt><small>{calendar}</small></tt>",
+    "calendar": {
+      "mode": "month",
+      "on-scroll": 1,
+      "format": {
+        "months":   "<span color='#ffead3'><b>{}</b></span>",
+        "days":     "<span color='#ecc6d9'><b>{}</b></span>",
+        "weeks":    "<span color='#99ffdd'><b>W{}</b></span>",
+        "weekdays": "<span color='#ffcc66'><b>{}</b></span>",
+        "today":    "<span color='#ff6699'><b><u>{}</u></b></span>"
+      }
+    },
+    "actions": {
+      "on-click-right": "mode",
+      "on-scroll-up": "shift_up",
+      "on-scroll-down": "shift_down"
+    }
+  },
+
+  "network": {
+    "justify": "center",
+    "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
+    "format": "{icon}",
+    "format-wifi": "{icon}",
+    "format-ethernet": "󰀂",
+    "format-disconnected": "󰤮",
+    "tooltip-format-wifi": "{essid} | {frequency}GHz | {signalStrength}%",
+    "tooltip-format-ethernet": "Connected",
+    "tooltip-format-disconnected": "Disconnected",
+    "interval": 3,
+    "spacing": 1,
+    "on-click": "timeout 40s kitty --class kitty --title dropdown -e impala",
+    "menu": "on-click-right",
+    "menu-file": "~/.config/waybar/menu/bandwith-test.xml",
+    "menu-actions": {
+      "speedtest": "~/.config/waybar/assets/scripts/bandwith-test.sh speedtest",
+      "netinfo": "~/.config/waybar/assets/scripts/bandwith-test.sh info"
+    }
+  },
+
+  "bluetooth": {
+    "justify": "center",
+    "format": "󰂯",
+    "format-connected": "󰂱",
+    "format-disabled": "󰂲",
+    "tooltip-format-connected": "{device_enumerate}",
+    "tooltip-format-enumerate-connected-battery": "{device_alias} {device_battery_percentage}%",
+    "tooltip-format-enumerate-connected": "{device_alias}",
+    "on-click": "timeout 40s kitty --class kitty --title dropdown -e bluetui",
+    "on-click-right": "rfkill toggle bluetooth"
+  },
+
+  "pulseaudio": {
+    "justify": "center",
+    "format": "{icon}",
+    "format-muted": "🔇",
+    "format-icons": {
+      "headphone": "",
+      "default": ["", "", ""]
+    },
+    "on-click": "pamixer -t",
+    "on-click-right": "timeout 15s launch-audio",
+    "tooltip-format": "Playing at {volume}%",
+    "scroll-step": 5
+  },
+
+  "backlight": {
+    "justify": "center",
+    "device": "intel_backlight",
+    "rotate": 0,
+    "format": "{icon}",
+    "on-scroll-down": "brightnessctl s 5%-",
+    "on-scroll-up": "brightnessctl s +5%",
+    "tooltip-format": "🌕 {percent}%",
+    "format-icons": ["󰃜", "󰃝", "󰃞", "󰃟", "󰃠"]
+  },
+
+  "battery": {
+    "justify": "center",
+    "format": "{icon}",
+    "format-discharging": "{icon}",
+    "format-charging": "{icon}",
+    "format-plugged": "{icon}",
+    "format-full": "{icon}",
+    "format-icons": {
+      "charging": ["󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"],
+      "default": ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
+    },
+    "tooltip-format-discharging": "{timeTo}",
+    "tooltip-format-charging": "{timeTo}",
+    "interval": 5,
+    "on-click": "menu power",
+    "on-click-right": "notify-send -u low \"$(battery-status)\"",
+    "states": {
+      "warning": 20,
+      "critical": 10
+    }
+  },
+
+  "power-profiles-daemon": {
+    "justify": "center",
+    "format": "{icon}",
+    "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+    "tooltip": true,
+    "format-icons": {
+      "default": " ",
+      "performance": " ",
+      "balanced": " ",
+      "power-saver": "󰌪 "
+    }
+  },
+
+  "cpu": {
+    "justify": "center",
+    "interval": 10,
+    "format": "{usage:02}%\ncpu",
+    "on-click": "launch-or-focus-tui btop",
+    "tooltip": false,
+    "states": {
+      "warning": 50,
+      "critical": 80
+    }
+  },
+
+  "memory": {
+    "justify": "center",
+    "interval": 2,
+    "format": " {percentage:02}%\n mem",
+    "on-click": "launch-or-focus-tui btop",
+    "tooltip": false,
+    "states": {
+      "warning": 50,
+      "critical": 80
+    }
+  },
+
+  "custom/updatespacman": {
+    "justify": "center",
+    "format": "{icon}",
+    "format-icons": {
+      "has-updates": "󰏗",
+      "updated": ""
+    },
+    "return-type": "json",
+    "exec": "waybar-module-pacman-updates --interval-seconds 5 --network-interval-seconds 300",
+    "on-click": "launch-floating-terminal-with-presentation update"
+  },
+
+  "custom/expand-icon": {
+    "format": "",
+    "tooltip": false
+  }
+}

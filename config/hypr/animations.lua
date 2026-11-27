@@ -1,1 +1,1 @@
-animations/disabled.lua
+/home/abr/.config/hypr/animations/fluid.lua

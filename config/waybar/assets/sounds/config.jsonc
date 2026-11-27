@@ -1,3 +1,0 @@
-{
-    "include": ["modules/*.jsonc", "active-layout.jsonc"]
-}

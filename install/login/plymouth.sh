@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
 # install/login/plymouth.sh — Install Cozy Plymouth theme + mkinitcpio hooks
-# Uses drop-in files (not sed on mkinitcpio.conf) — mirrors cozy.
 # =============================================================================
 
 set -euo pipefail
@@ -13,58 +12,26 @@ COZY_DIR="${COZY_DIR:-$HOME/.local/share/Cozy}"
 THEME_SRC="$COZY_DIR/default/plymouth/cozy"
 THEME_DEST="/usr/share/plymouth/themes/cozy"
 
-# ─── Install Plymouth ─────────────────────────────────────────────────────────
 ensure_installed plymouth
 ensure_installed ttf-liberation
 
-# ─── Validate source ──────────────────────────────────────────────────────────
 if [[ ! -d "$THEME_SRC" ]]; then
-    warn "Plymouth theme source not found at $THEME_SRC — skipping"
-    exit 0
+  warn "Plymouth theme source not found at $THEME_SRC — skipping"
+  exit 0
 fi
 
-# ─── Install theme files ──────────────────────────────────────────────────────
 sudo mkdir -p "$THEME_DEST"
-sudo cp "$THEME_SRC/cozy.plymouth"    "$THEME_DEST/"
-sudo cp "$THEME_SRC/cozy.script"      "$THEME_DEST/"
-sudo cp "$THEME_SRC/entry.png"          "$THEME_DEST/"
-sudo cp "$THEME_SRC/lock.png"           "$THEME_DEST/"
-sudo cp "$THEME_SRC/bullet.png"         "$THEME_DEST/"
-sudo cp "$THEME_SRC/progress_box.png"   "$THEME_DEST/"
-sudo cp "$THEME_SRC/progress_bar.png"   "$THEME_DEST/"
+sudo cp -a "$THEME_SRC"/. "$THEME_DEST/"
+if [[ -f "$COZY_DIR/default/plymouth/plymouth.png" ]]; then
+  sudo cp "$COZY_DIR/default/plymouth/plymouth.png" "$THEME_DEST/plymouth.png"
+fi
 ok "Theme files installed to $THEME_DEST"
 
-# ─── Install wallpaper ────────────────────────────────────────────────────────
-WALLPAPER_SRC="$COZY_DIR/default/plymouth/plymouth.png"
-if [[ -f "$WALLPAPER_SRC" ]]; then
-    sudo cp "$WALLPAPER_SRC" "$THEME_DEST/plymouth.png"
-    ok "Wallpaper installed"
-else
-    warn "plymouth.png not found at $WALLPAPER_SRC — copy manually to $THEME_DEST/plymouth.png"
-fi
-
-# ─── Regenerate assets (optional) ────────────────────────────────────────────
-if [[ "${REGEN_ASSETS:-false}" == "true" ]]; then
-    if command -v python3 &>/dev/null; then
-        pip install pillow --break-system-packages -q
-        python3 "$THEME_SRC/generate_assets.py"
-        sudo cp "$THEME_SRC"/*.png "$THEME_DEST/"
-        ok "Assets regenerated and installed"
-    else
-        warn "python3 not found — skipping asset regeneration, using pre-built PNGs"
-    fi
-fi
-
-# ─── Set plymouth theme via plymouthd.conf ───────────────────────────────────
 sudo mkdir -p /etc/plymouth
-printf "[Daemon]\nTheme=cozy\n" | sudo tee /etc/plymouth/plymouthd.conf >/dev/null
+printf '[Daemon]\nTheme=cozy\n' | sudo tee /etc/plymouth/plymouthd.conf >/dev/null
 ok "Wrote /etc/plymouth/plymouthd.conf (Theme=cozy)"
 
-# ─── mkinitcpio drop-in: cozy_hooks.conf ───────────────────────────────────
-# Replaces HOOKS from /etc/mkinitcpio.conf with the correct boot stack:
-# base udev plymouth keyboard autodetect microcode modconf kms keymap
-# consolefont block encrypt filesystems fsck btrfs-overlayfs
-# (uses busybox `encrypt`, not systemd sd-encrypt — matches cozy)
+# mkinitcpio drop-ins: keep Cozy LUKS/Plymouth/btrfs-overlayfs boot stack.
 sudo mkdir -p /etc/mkinitcpio.conf.d
 sudo tee /etc/mkinitcpio.conf.d/cozy_hooks.conf >/dev/null <<'HOOKS_EOF'
 HOOKS=(base udev plymouth keyboard autodetect microcode modconf kms keymap consolefont block encrypt filesystems fsck btrfs-overlayfs)
@@ -108,48 +75,26 @@ fi
 HOOKS_EOF
 ok "Wrote /etc/mkinitcpio.conf.d/cozy_hooks.conf"
 
-# Match cozy: resume hook lives in its own drop-in so it can be
-# toggled/overridden independently; cozy_resume.conf uses HOOKS+=(resume).
-sudo tee /etc/mkinitcpio.conf.d/cozy_resume.conf >/dev/null <<'RESUME_EOF'
+if [[ ! -f /etc/mkinitcpio.conf.d/cozy_resume.conf ]]; then
+  sudo tee /etc/mkinitcpio.conf.d/cozy_resume.conf >/dev/null <<'RESUME_EOF'
 HOOKS+=(resume)
 RESUME_EOF
-ok "Wrote /etc/mkinitcpio.conf.d/cozy_resume.conf (resume hook)"
+  ok "Wrote /etc/mkinitcpio.conf.d/cozy_resume.conf"
+fi
 
-# ─── Rebuild initramfs / UKIs ─────────────────────────────────────────────────
-# limine-mkinitcpio builds UKIs and re-runs limine-entry-tool (preferred when
-# limine-mkinitcpio-hook is installed). Fallback to mkinitcpio -P.
 msg "Rebuilding initramfs / UKIs..."
-REBUILD_OK=false
 if command -v limine-mkinitcpio &>/dev/null; then
-    if sudo limine-mkinitcpio 2>&1 | tail -20; then
-        ok "UKIs rebuilt via limine-mkinitcpio"
-        REBUILD_OK=true
-    else
-        warn "limine-mkinitcpio failed — try manually: sudo limine-mkinitcpio"
-    fi
-elif sudo plymouth-set-default-theme -R cozy 2>&1 | tail -10; then
-    ok "Initramfs rebuilt via plymouth-set-default-theme -R"
-    REBUILD_OK=true
+  sudo limine-mkinitcpio
+  ok "UKIs rebuilt via limine-mkinitcpio"
+elif command -v mkinitcpio &>/dev/null; then
+  sudo mkinitcpio -P
+  ok "initramfs rebuilt via mkinitcpio -P"
 else
-    warn "plymouth-set-default-theme -R failed — trying mkinitcpio -P"
-    if sudo mkinitcpio -P 2>&1 | tail -20; then
-        ok "initramfs rebuilt via mkinitcpio -P"
-        REBUILD_OK=true
-    else
-        warn "mkinitcpio failed — run manually"
-    fi
+  warn "No initramfs rebuild tool found"
 fi
 
-# Verify a UKI actually exists — entries point at /boot/EFI/Linux/*.efi, no UKI = unbootable
-if ! ls /boot/EFI/Linux/*.efi &>/dev/null; then
-    if [[ "$REBUILD_OK" == true ]]; then
-        warn "No UKI found in /boot/EFI/Linux/ after rebuild — boot entries will be empty"
-    else
-        err "No UKI in /boot/EFI/Linux/ and rebuild failed — system will NOT boot"
-        exit 1
-    fi
-else
-    ok "Verified UKI: $(ls /boot/EFI/Linux/*.efi 2>/dev/null | head -1)"
+if command -v limine-snapper-sync &>/dev/null; then
+  sudo limine-snapper-sync || true
 fi
 
-ok "Plymouth setup complete — reboot to see the theme"
+ok "Plymouth setup complete"

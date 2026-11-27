@@ -38,7 +38,6 @@ if [[ -f $MKINITCPIO_CONF ]] && grep -q "^HOOKS+=(resume)$" "$MKINITCPIO_CONF"; 
     if [[ -n $RESUME_OFFSET ]]; then
       echo "Fixing empty resume_offset ($RESUME_OFFSET)"
       sudo sed -i "s/resume_offset=\"$/resume_offset=$RESUME_OFFSET\"/" "$RESUME_DROP_IN"
-      sudo sed -i "s/resume_offset=\"$/resume_offset=$RESUME_OFFSET\"/" /etc/default/limine
       $NO_REBUILD || sudo limine-mkinitcpio
     fi
   fi
@@ -91,7 +90,7 @@ echo "HOOKS+=(resume)" | sudo tee "$MKINITCPIO_CONF" >/dev/null
 sudo cp -p "$COZY_PATH/default/systemd/system-sleep/keyboard-backlight" /usr/lib/systemd/system-sleep/
 
 # Add resume= kernel parameters so the initramfs resume hook knows where to find the
-# hibernation image. Without these, resume happens late (after GPU drivers load) and fails.
+# hibernation image. limine-entry-tool loads /etc/limine-entry-tool.d/*.conf natively.
 if [[ ! -f $RESUME_DROP_IN ]]; then
   echo "Adding resume kernel parameters"
   sudo swapon -p 0 "$SWAP_FILE" 2>/dev/null
@@ -100,7 +99,6 @@ if [[ ! -f $RESUME_DROP_IN ]]; then
   if [[ -n $RESUME_OFFSET ]]; then
     sudo mkdir -p /etc/limine-entry-tool.d
     echo "KERNEL_CMDLINE[default]+=\" resume=$RESUME_DEVICE resume_offset=$RESUME_OFFSET\"" | sudo tee "$RESUME_DROP_IN" >/dev/null
-    sudo tee -a /etc/default/limine < "$RESUME_DROP_IN" >/dev/null
   else
     echo "Warning: Could not determine resume offset for $SWAP_FILE" >&2
   fi
@@ -113,7 +111,6 @@ if grep -q "\[s2idle\]" /sys/power/mem_sleep 2>/dev/null; then
     echo "Enabling ACPI RTC alarm for s2idle suspend"
     sudo mkdir -p /etc/limine-entry-tool.d
     echo 'KERNEL_CMDLINE[default]+=" rtc_cmos.use_acpi_alarm=1"' | sudo tee "$LIMINE_DROP_IN" >/dev/null
-    sudo tee -a /etc/default/limine < "$LIMINE_DROP_IN" >/dev/null
   fi
 fi
 

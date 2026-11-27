@@ -1,19 +1,37 @@
 # Boot Stack (Cozy)
 
-Cozy's Limine + LUKS + Plymouth + Btrfs stack. No ISO — manual archinstall with LUKS + Btrfs (`@`, `@home`, `@var`, `@snapshots`) then `setup.sh`.
+Cozy uses a Limine + LUKS + Plymouth + Btrfs + snapper boot stack, inspired by Omarchy's mechanism but kept Cozy-branded.
 
-```
-ESP /boot (vfat, 2G)  →  /boot/limine.conf (flat, NOT /boot/limine/limine.conf)
-                      →  /boot/EFI/limine/limine_x64.efi (via limine-install)
-                      →  /boot/EFI/Linux/cozy_linux.efi (UKI, via limine-mkinitcpio-hook)
-                      →  /boot/limine.png (wallpaper, stretched)
-```
+## Files / ownership
 
-- **Limine**: `install/login/limine.sh` — installs `limine` + `limine-mkinitcpio-hook` (AUR), writes `/etc/kernel/cmdline` (LUKS: `cryptdevice=PARTUUID=…:root root=/dev/mapper/root … rootflags=subvol=@`), writes `/etc/limine-entry-tool.d/cozy-*.conf` (KERNEL_CMDLINE quiet/splash/loglevel, UKI `cozy`, fallback, BOOT_ORDER, snapshots), deploys `default/limine/limine.conf` header (`#timeout: 3`, `default_entry: 2`, `hash_mismatch_panic: no`, branding `Cozy #74a86a`), runs `limine-install` + `limine-entry-tool`.
-- **Plymouth**: `install/login/plymouth.sh` — installs theme `default/plymouth/cozy/` → `/usr/share/plymouth/themes/cozy/`, writes `/etc/plymouth/plymouthd.conf` (`Theme=cozy`), writes `/etc/mkinitcpio.conf.d/cozy_hooks.conf` (`HOOKS=(base udev plymouth keyboard … block encrypt filesystems … btrfs-overlayfs)` + NVIDIA kms guard + vconsole bundling), rebuilds via `limine-mkinitcpio`.
-- **mkinitcpio**: never sed the main `mkinitcpio.conf`; use drop-ins in `/etc/mkinitcpio.conf.d/`.
-- **Update**: `update.sh` re-runs `limine-entry-tool` + `limine-mkinitcpio` (guarded).
+- `install/login/limine.sh` — canonical boot mechanism apply script. Builds `/etc/default/limine` from `default/limine/default.conf`, deploys `default/limine/limine.conf`, installs/configures `limine`, `limine-mkinitcpio-hook`, `limine-snapper-sync`, `snapper` (btrfs root), enables `limine-snapper-sync.service`, rebuilds UKIs/entries via `limine-update`/`limine-mkinitcpio`, and carefully cleans stale archinstall Limine EFI entries only when a Limine/Cozy entry is present.
+- `install/login/plymouth.sh` — installs Cozy Plymouth theme, writes `/etc/plymouth/plymouthd.conf`, maintains mkinitcpio drop-ins (`cozy_hooks.conf`, `cozy_resume.conf`), rebuilds UKIs.
+- `default/limine/default.conf` — source template for `/etc/default/limine` (`@@CMDLINE@@` placeholder). Cozy-branded: `TARGET_OS_NAME=Cozy`, `CUSTOM_UKI_NAME=cozy`, snapshots enabled.
+- `default/limine/limine.conf` — deployed to `/boot/limine.conf` header; boot entries are generated below it.
+- `default/snapper/root` — Cozy-managed snapper root config for pre-update recovery snapshots.
+- `bin/libexec/cozy/maintenance/refresh-limine` — runs canonical limine apply script.
+- `bin/libexec/cozy/maintenance/refresh-plymouth` — refreshes Plymouth theme and rebuilds boot artifacts.
 
-Validate: `findmnt /boot`, `cat /boot/limine.conf`, `cat /etc/kernel/cmdline`, `ls /etc/limine-entry-tool.d/`, `cat /etc/mkinitcpio.conf.d/cozy_hooks.conf`.
+## Command flow
 
-- **Quiet ACPI console:** `install/system/acpi-loglevel.sh` normalizes `loglevel=3` in both `/etc/kernel/cmdline` (embedded UKI `.cmdline`, used by systemd-boot/firmware) and `/etc/limine-entry-tool.d/cozy-defaults.conf` (Limine's generated `cmdline`), rebuilds the UKI, and applies `dmesg -n 3` immediately. It hides harmless ACPI firmware errors from the TTY only; nothing is disabled and messages remain in `journalctl`/`dmesg`. Re-run by `setup.sh`/`update.sh`; avoid `acpi=off`.
+- Setup: `setup.sh` runs `login/limine.sh` then `login/plymouth.sh`.
+- Update: `update.sh` runs `login/limine.sh` and `login/plymouth.sh` as part of boot stack sync.
+- Manual refresh: `cozy refresh limine` / `cozy refresh plymouth` (or corresponding maintenance commands).
+
+## Config model
+
+- `/etc/default/limine` is the primary limine-entry-tool config generated from Cozy template.
+- `/etc/limine-entry-tool.d/*.conf` drop-ins are loaded natively by limine-entry-tool; avoid appending them into `/etc/default/limine` to prevent duplicate KERNEL_CMDLINE entries.
+- `/etc/kernel/cmdline` may exist for legacy/compat tooling; keep it consistent if touched.
+
+## Snapshots
+
+- Root btrfs systems get `snapper -c root` config from `default/snapper/root`.
+- `limine-snapper-sync` is installed/enabled when available.
+- Snapshot restore path remains `cozy snapshot restore` -> `limine-snapper-restore`.
+
+## Safety
+
+- Boot changes are risky. Test on a non-critical machine/VM first.
+- Do not remove active EFI fallback entries before confirming new Limine/Cozy entry and generated boot entries.
+- After changes, validate: `cat /etc/default/limine`, `cat /boot/limine.conf`, `ls /boot/EFI/Linux`, `efibootmgr -v`, `systemctl is-enabled limine-snapper-sync.service`.

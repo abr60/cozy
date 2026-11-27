@@ -49,11 +49,24 @@ echo "Removing suspend-then-hibernate configuration"
 sudo rm -f /etc/systemd/logind.conf.d/lid.conf
 sudo rm -f /etc/systemd/sleep.conf.d/hibernate.conf
 
+# Remove Limine resume/RTC drop-ins
+for dropin in /etc/limine-entry-tool.d/resume.conf /etc/limine-entry-tool.d/rtc-alarm.conf; do
+  if [[ -f $dropin ]]; then
+    sudo rm -f "$dropin"
+    echo "Removed $dropin"
+  fi
+done
+
 # Remove mkinitcpio resume hook
 echo "Removing resume hook"
-sudo rm "$MKINITCPIO_CONF"
+sudo rm -f "$MKINITCPIO_CONF"
 
-echo "Regenerating initramfs..."
-sudo limine-mkinitcpio
+if command -v limine-mkinitcpio &>/dev/null; then
+  echo "Regenerating initramfs..."
+  sudo limine-mkinitcpio
+elif command -v mkinitcpio &>/dev/null; then
+  echo "Regenerating initramfs..."
+  sudo mkinitcpio -P
+fi
 
 echo "Hibernation removed"

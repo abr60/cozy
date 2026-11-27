@@ -1,0 +1,50 @@
+/* =========================================================
+   base.css — structural reset shared by every Waybar style.
+   Colors and chrome belong in the style files; spacing lives
+   in spacing.css + the orientation layer.
+   ========================================================= */
+
+* {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  text-shadow: none;
+  min-height: 0;
+  color: @on_surface;
+}
+
+window#waybar {
+  background-color: transparent;
+}
+
+button {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+.modules-left,
+.modules-center,
+.modules-right {
+  background-color: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+#tray {
+  background-color: transparent;
+}
+
+#tray > .passive {
+  -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+  -gtk-icon-effect: highlight;
+}
+
+tooltip,
+menu,
+menu * {
+  transition: none;
+}

@@ -14,8 +14,34 @@ waybar
 mako
 swaybg
 foot
+xdg-terminal-exec
 rofi
 brightnessctl
+
+# --- Walker launcher/menu (installed during setup) ---
+poppler-glib                    # Walker runtime dependency
+libqalculate                    # Elephant calc provider dependency
+wtype                           # Elephant input provider dependency
+walker-bin                      # Walker launcher (AUR)
+elephant-bin                    # Elephant data provider daemon (AUR)
+elephant-desktopapplications-bin
+elephant-providerlist-bin
+elephant-calc-bin
+elephant-symbols-bin
+elephant-clipboard-bin
+elephant-files-bin
+elephant-menus-bin
+elephant-websearch-bin
+elephant-runner-bin
+elephant-windows-bin
+elephant-playerctl-bin
+elephant-bluetooth-bin
+elephant-wireplumber-bin
+elephant-bookmarks-bin
+elephant-archlinuxpkgs-bin
+elephant-snippets-bin
+elephant-todo-bin
+elephant-unicode-bin
 
 # --- Screenshots, Clipboard & Recording ---
 grim

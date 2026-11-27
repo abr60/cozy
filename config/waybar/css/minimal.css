@@ -1,15 +1,15 @@
-@import "../waybar/matugen.css";
+/* =========================================================
+   minimal.css — flat, quiet, low-contrast identity.
+   Structural spacing comes from spacing.css / horizontal.css /
+   vertical.css; this file decides appearance and its own
+   typography/menu rhythm.
+   ========================================================= */
 
 * {
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  text-shadow: none;
-  transition: none;
-  min-height: 0;
   font-family: "JetBrainsMono Nerd Font Propo";
   font-size: 14px;
   font-weight: 500;
+  transition: none;
 }
 
 window#waybar {
@@ -23,6 +23,12 @@ window#waybar > box {
   padding: 0 10px;
   margin: 0;
   background-color: transparent;
+}
+
+window#waybar.left,
+window#waybar.right {
+  border: 1px solid alpha(@outline_variant, 0.45);
+  border-radius: 0;
 }
 
 .modules-left,
@@ -60,6 +66,30 @@ window#waybar > box {
 #workspaces button:hover {
   color: @on_surface;
   background-color: alpha(@on_surface, 0.07);
+}
+
+/* Vertical bars use an inner edge marker instead of a bottom line. */
+window#waybar.left #workspaces button,
+window#waybar.right #workspaces button {
+  border-bottom: 1px solid transparent;
+}
+
+window#waybar.left #workspaces button {
+  border-left: 2px solid transparent;
+}
+
+window#waybar.right #workspaces button {
+  border-right: 2px solid transparent;
+}
+
+window#waybar.left #workspaces button.active {
+  border-left-color: @primary;
+  border-radius: 6px;
+}
+
+window#waybar.right #workspaces button.active {
+  border-right-color: @primary;
+  border-radius: 6px;
 }
 
 #custom-menu,

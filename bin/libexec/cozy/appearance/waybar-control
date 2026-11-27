@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+# cozy:summary=Switch Waybar style (Minimal/Intricate) and position (top/bottom/left/right).
+# cozy:examples=waybar-control style intricate
+
+set -euo pipefail
+
+WAYBAR_DIR="${WAYBAR_DIR:-$HOME/.config/waybar}"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/Cozy"
+STYLE_STATE="$STATE_DIR/waybar-style"
+POSITION_STATE="$STATE_DIR/waybar-position"
+
+VALID_STYLES=(minimal intricate)
+VALID_POSITIONS=(top bottom left right)
+
+die() {
+  printf 'waybar-control: %s\n' "$*" >&2
+  exit 1
+}
+
+in_list() {
+  local needle=$1
+  shift
+  local item
+  for item in "$@"; do
+    [[ "$item" == "$needle" ]] && return 0
+  done
+  return 1
+}
+
+read_state() {
+  STYLE=$(cat "$STYLE_STATE" 2>/dev/null || true)
+  POSITION=$(cat "$POSITION_STATE" 2>/dev/null || true)
+
+  in_list "$STYLE" "${VALID_STYLES[@]}" || STYLE=minimal
+  in_list "$POSITION" "${VALID_POSITIONS[@]}" || POSITION=top
+}
+
+orientation() {
+  case "$1" in
+    top|bottom) printf 'horizontal\n' ;;
+    left|right) printf 'vertical\n' ;;
+  esac
+}
+
+apply() {
+  local dir
+  dir=$(orientation "$POSITION")
+
+  mkdir -p "$STATE_DIR"
+  printf '%s\n' "$STYLE" > "$STYLE_STATE"
+  printf '%s\n' "$POSITION" > "$POSITION_STATE"
+
+  ln -sfn "layouts/$POSITION.jsonc" "$WAYBAR_DIR/config.jsonc"
+  ln -sfn "css/combos/$STYLE-$dir.css" "$WAYBAR_DIR/style.css"
+
+  # Keep the GTK menu's active markers in sync with the new state.
+  if command -v generate-menu >/dev/null 2>&1; then
+    generate-menu >/dev/null 2>&1 || true
+  fi
+}
+
+reload() {
+  if pgrep -x waybar >/dev/null 2>&1; then
+    pkill -SIGUSR2 -x waybar 2>/dev/null || true
+  else
+    setsid waybar >/dev/null 2>&1 &
+  fi
+}
+
+notify() {
+  command -v notify-send >/dev/null 2>&1 || return 0
+  notify-send -a Waybar -t 2000 "$1" "$2" >/dev/null 2>&1 || true
+}
+
+usage() {
+  cat <<'EOF'
+Usage: waybar-control <command>
+
+Commands:
+  style minimal|intricate       Set the Waybar style
+  position top|bottom|left|right
+                                Set the Waybar position
+  cycle-style                   Cycle Minimal -> Intricate -> Minimal
+  status                        Show the stored style and position
+  render [--no-reload]          Re-apply the stored state
+EOF
+}
+
+command=${1:-status}
+shift || true
+
+case "$command" in
+  style)
+    [[ $# -eq 1 ]] || die "style needs one value: minimal|intricate"
+    in_list "$1" "${VALID_STYLES[@]}" || die "unknown style: $1"
+    read_state
+    STYLE=$1
+    apply
+    reload
+    notify "Waybar style" "$STYLE"
+    ;;
+
+  position)
+    [[ $# -eq 1 ]] || die "position needs one value: top|bottom|left|right"
+    in_list "$1" "${VALID_POSITIONS[@]}" || die "unknown position: $1"
+    read_state
+    POSITION=$1
+    apply
+    reload
+    notify "Waybar position" "$POSITION"
+    ;;
+
+  cycle-style)
+    read_state
+    if [[ "$STYLE" == minimal ]]; then
+      STYLE=intricate
+    else
+      STYLE=minimal
+    fi
+    apply
+    reload
+    notify "Waybar style" "$STYLE"
+    ;;
+
+  status)
+    read_state
+    printf 'style: %s\nposition: %s\norientation: %s\n' \
+      "$STYLE" "$POSITION" "$(orientation "$POSITION")"
+    ;;
+
+  render)
+    read_state
+    apply
+    [[ "${1:-}" == "--no-reload" ]] || reload
+    ;;
+
+  -h|--help|help)
+    usage
+    ;;
+
+  *)
+    usage >&2
+    die "unknown command: $command"
+    ;;
+esac

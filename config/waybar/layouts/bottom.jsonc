@@ -1,8 +1,13 @@
 {
+  "include": [
+    "modules/*.jsonc",
+    "modules/groups/common.jsonc",
+    "modules/groups/horizontal.jsonc"
+  ],
 
-  "include": ["modules/*.jsonc"],
-
+  "name": "bottom",
   "position": "bottom",
+  "reload_style_on_change": true,
   "height": 22,
   "margin": "0px 0px 0px 0px",
   "spacing": 0,

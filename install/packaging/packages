@@ -209,6 +209,17 @@ echo "Install started: $(date)" >> "$LOG_FILE"
 
 bootstrap_yay
 
+# elephant-bin replaces the source-built elephant package. Remove a stale
+# elephant install first so the AUR batch does not stall on a conflict prompt.
+if pacman -Q elephant &>/dev/null && ! pacman -Q elephant-bin &>/dev/null; then
+    msg "Replacing source 'elephant' with 'elephant-bin'..."
+    sudo pacman -R --noconfirm elephant >> "$LOG_FILE" 2>&1 || \
+        warn "Could not remove stale elephant package — continuing"
+    if pacman -Q elephant-debug &>/dev/null; then
+        sudo pacman -R --noconfirm elephant-debug >> "$LOG_FILE" 2>&1 || true
+    fi
+fi
+
 SKIPPED=()
 REPO_PKGS=()
 AUR_PKGS=()

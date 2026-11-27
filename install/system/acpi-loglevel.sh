@@ -1,13 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # system/acpi-loglevel.sh — Keep harmless ACPI firmware errors off the TTY
-#
-# Sets console loglevel=3 in every boot path that Cozy uses:
-#   - /etc/kernel/cmdline      → embedded in the UKI (systemd-boot / firmware)
-#   - cozy-defaults.conf       → KERNEL_CMDLINE used by limine-entry-tool
-#
-# Nothing is disabled. ACPI, sleep, battery, fans and CPU scaling stay intact;
-# messages are still recorded in dmesg/journalctl, just not printed on the TTY.
+# Cozy/Omarchy Limine mechanism: /etc/default/limine is authoritative.
 # =============================================================================
 
 set -euo pipefail
@@ -15,62 +9,45 @@ source "$(dirname "${BASH_SOURCE[0]}")/../lib/helpers.sh"
 
 section "ACPI Console Log Level"
 
+DEFAULT_LIMINE="/etc/default/limine"
+LEGACY_DROPIN="/etc/limine-entry-tool.d/cozy-defaults.conf"
 CMDLINE_FILE="/etc/kernel/cmdline"
-LIMINE_DROPIN="/etc/limine-entry-tool.d/cozy-defaults.conf"
-STAMP="$(date +%Y%m%d%H%M%S)"
 
-ensure_loglevel_three() {
-    local file="$1"
-    local label="$2"
-
-    if [[ ! -f "$file" ]]; then
-        warn "$label not found — skipping"
-        return 0
-    fi
-
-    local current
-    current="$(sudo grep -oE 'loglevel=[0-9]+' "$file" | head -1 || true)"
-
-    if [[ "$current" == "loglevel=3" ]]; then
-        ok "$label already uses loglevel=3"
-        return 0
-    fi
-
-    sudo cp -a "$file" "${file}.bak-acpi-${STAMP}"
-
-    if [[ -n "$current" ]]; then
-        sudo sed -i -E 's/loglevel=[0-9]+/loglevel=3/g' "$file"
-        ok "$label: $current → loglevel=3"
+set_loglevel_file() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  if sudo grep -q 'loglevel=' "$file"; then
+    sudo sed -i -E 's/loglevel=[0-9]+/loglevel=3/g' "$file"
+  else
+    # Append loglevel=3 to kernel cmdline line where appropriate.
+    if grep -q 'KERNEL_CMDLINE' "$file"; then
+      sudo sed -i -E 's/(KERNEL_CMDLINE\[default\]\+="[^"]*)"/\1 loglevel=3"/' "$file" || true
     else
-        local body
-        body="$(sudo sed -e 's/[[:space:]]*$//' "$file")"
-        printf '%s%sloglevel=3\n' "$body" "${body:+ }" | sudo tee "$file" >/dev/null
-        ok "$label: appended loglevel=3"
+      printf ' %s\n' "loglevel=3" | sudo tee -a "$file" >/dev/null
     fi
+  fi
+  ok "Normalized loglevel=3 in $file"
 }
 
-ensure_loglevel_three "$CMDLINE_FILE" "/etc/kernel/cmdline"
-ensure_loglevel_three "$LIMINE_DROPIN" "Limine entry-tool drop-in"
-
-# Rebuild the UKI so the embedded .cmdline is updated.
-if command -v limine-mkinitcpio &>/dev/null; then
-    msg "Rebuilding UKIs (limine-mkinitcpio)..."
-    sudo limine-mkinitcpio >/dev/null 2>&1 || warn "limine-mkinitcpio failed"
-elif command -v mkinitcpio &>/dev/null; then
-    msg "Rebuilding UKIs (mkinitcpio -P)..."
-    sudo mkinitcpio -P >/dev/null 2>&1 || warn "mkinitcpio -P failed"
+# Primary: /etc/default/limine
+if [[ -f "$DEFAULT_LIMINE" ]]; then
+  set_loglevel_file "$DEFAULT_LIMINE"
 else
-    warn "No UKI builder found — reboot required to apply"
+  warn "$DEFAULT_LIMINE not found; run refresh-limine to create it"
 fi
 
-# Limine reads its own generated cmdline from limine.conf.
-if command -v limine-entry-tool &>/dev/null; then
-    msg "Regenerating Limine entries..."
-    sudo limine-entry-tool >/dev/null 2>&1 || warn "limine-entry-tool failed"
+# Legacy compatibility
+set_loglevel_file "$LEGACY_DROPIN"
+set_loglevel_file "$CMDLINE_FILE"
+
+if command -v limine-mkinitcpio &>/dev/null; then
+  msg "Rebuilding UKIs via limine-mkinitcpio..."
+  sudo limine-mkinitcpio >/dev/null 2>&1 || warn "limine-mkinitcpio failed"
+elif command -v mkinitcpio &>/dev/null; then
+  msg "Rebuilding initramfs via mkinitcpio -P..."
+  sudo mkinitcpio -P >/dev/null 2>&1 || warn "mkinitcpio -P failed"
 fi
 
-# Stop the flood in the current session too — no reboot needed for this part.
+# Apply to current session only; boot-time value comes from rebuilt UKI/entries.
 sudo dmesg -n 3 >/dev/null 2>&1 || true
-
-ok "ACPI messages still land in journalctl/dmesg — only TTY printing is reduced"
-warn "Reboot to apply the boot-time change"
+ok "TTY loglevel normalized; messages remain in journalctl/dmesg"

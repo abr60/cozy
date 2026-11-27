@@ -1,0 +1,77 @@
+/* =========================================================
+   vertical.css — left / right sidebar refinements.
+   Imported only by the *-vertical.css entrypoints. Everything
+   here overrides the horizontal rhythm from spacing.css.
+   ========================================================= */
+
+window#waybar > box {
+  padding: 8px 0;
+  margin: 0;
+}
+
+.modules-left,
+.modules-center,
+.modules-right {
+  margin: 4px 0;
+  padding: 0;
+}
+
+/* Stacked module rhythm (8px inline, 6px block) */
+#custom-menu,
+#custom-separator,
+#mpris,
+#custom-updatespacman,
+#custom-screenrecording-indicator,
+#custom-voxtype,
+#custom-notification-silencing-indicator,
+#bluetooth,
+#network,
+#backlight,
+#pulseaudio,
+#clock,
+#custom-vpn,
+#custom-idle-indicator,
+#power-profiles-daemon,
+#battery,
+#custom-expand-icon {
+  padding: 6px 0;
+  margin: 0 8px;
+}
+
+#cpu,
+#memory {
+  padding: 4px 0;
+  margin: 0 8px;
+}
+
+/* Workspace indicators become vertical pills */
+#workspaces {
+  margin: 2px 0;
+  padding: 0;
+}
+
+#workspaces button {
+  min-width: 34px;
+  min-height: 22px;
+  padding: 4px 0;
+  margin: 2px 6px;
+  border-radius: 6px;
+}
+
+/* The tray drawer is a row of icons inside the sidebar */
+#tray-expander {
+  margin: 4px 6px;
+}
+
+#tray-expander > widget {
+  padding: 4px 0;
+}
+
+#tray-group-item {
+  margin: 2px 0;
+  padding: 0;
+}
+
+/* Visibility is controlled by the layout module arrays.
+   Horizontal-only modules (temperature, weather, timer, mako, hdd, lens,
+   display-scale, power, raw tray) are simply not listed in left/right. */

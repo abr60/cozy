@@ -162,19 +162,7 @@ fi
 # ── Boot stack (Limine + Plymouth) ────────────────────────────────────────────
 section "Syncing boot config"
 run_step "login/limine.sh" "Limine bootloader config"
-
-# Rebuild UKIs if hook package present (applies new mkinitcpio hooks / cmdline).
-# limine-entry-tool has no regenerate-all mode; limine-mkinitcpio creates entries.
-if command -v limine-mkinitcpio &>/dev/null; then
-    msg "Rebuilding UKIs (limine-mkinitcpio)..."
-    if sudo limine-mkinitcpio 2>&1 | tail -10; then
-        ok "UKIs rebuilt"
-        echo " BOOT: UKIs rebuilt" >> "$REPORT_FILE"
-    else
-        warn "limine-mkinitcpio failed"
-        echo " BOOT: limine-mkinitcpio failed" >> "$REPORT_FILE"
-    fi
-fi
+run_step "login/plymouth.sh" "Plymouth boot splash"
 
 # ==========================================
 # 7. RE-STOW CONFIG SYMLINKS

@@ -1,25 +1,13 @@
 #!/usr/bin/env bash
-# cozy:summary=Refresh Limine header and regenerate boot entries
+# cozy:summary=Refresh Limine config, rebuild UKIs, and sync snapshots
 
 set -euo pipefail
 
 COZY_DIR="${COZY_DIR:-$HOME/.local/share/Cozy}"
-TEMPLATE="$COZY_DIR/default/limine/limine.conf"
-DEST="/boot/limine.conf"
 
-if [[ ! -f "$TEMPLATE" ]]; then
-    echo "ERROR: Template not found at $TEMPLATE" >&2
-    exit 1
+if [[ -x "$COZY_DIR/install/login/limine.sh" ]]; then
+  exec bash "$COZY_DIR/install/login/limine.sh"
 fi
 
-# Deploy header (flat path — not /boot/limine/limine.conf)
-sudo cp "$TEMPLATE" "$DEST"
-echo "Limine header deployed to $DEST"
-
-# Regenerate entries (kernel cmdline comes from /etc/kernel/cmdline + drop-ins)
-if command -v limine-entry-tool &>/dev/null; then
-    sudo limine-entry-tool
-    echo "Boot entries regenerated via limine-entry-tool"
-else
-    echo "WARN: limine-entry-tool not found — header only, no entries generated" >&2
-fi
+echo "ERROR: $COZY_DIR/install/login/limine.sh not found" >&2
+exit 1
