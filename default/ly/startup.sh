@@ -23,12 +23,34 @@ fi
 
 # Regenerate the rain animation for the actual console resolution so it always
 # fills the screen (a .dur file is a fixed-size frame, unlike built-in animations).
-RAIN_GEN="${COZY_PATH:-$HOME/.local/share/Cozy}/default/ly/generate-rain.py"
-if [ -x "$RAIN_GEN" ]; then
+# Ly runs this as root without a user HOME, so accept several candidate roots;
+# the systemd drop-in installed by login/ly.sh normally provides COZY_PATH.
+RAIN_GEN=""
+for cozy_base in "${COZY_PATH:-}" "${HOME:-}/.local/share/Cozy" /home/abr/.local/share/Cozy /usr/share/Cozy; do
+    [ -n "$cozy_base" ] || continue
+    if [ -x "$cozy_base/default/ly/generate-rain.py" ]; then
+        RAIN_GEN="$cozy_base/default/ly/generate-rain.py"
+        break
+    fi
+done
+
+log_rain() {
+    if command -v logger >/dev/null 2>&1; then
+        logger -t cozy-ly "$*"
+    fi
+}
+
+if [ -z "$RAIN_GEN" ]; then
+    log_rain "generate-rain.py not found; keeping existing rain.dur"
+else
     size=$(stty size 2>/dev/null </dev/tty)
     [ -n "$size" ] || size=$(stty size 2>/dev/null </dev/tty2)
     set -- $size
-    if [ -n "$1" ] && [ -n "$2" ]; then
-        python3 "$RAIN_GEN" /etc/ly/rain.dur "$2" "$1" >/dev/null 2>&1 || true
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        log_rain "could not read console size; keeping existing rain.dur"
+    elif python3 "$RAIN_GEN" /etc/ly/rain.dur "$2" "$1" >/dev/null 2>&1; then
+        :
+    else
+        log_rain "rain regeneration failed; keeping existing rain.dur"
     fi
 fi

@@ -26,6 +26,8 @@ ok "SDDM / greetd removed"
 
 # ─── Install Ly ───────────────────────────────────────────────────────────────
 ensure_installed ly
+# generate-rain.py needs Python at install time and at every Ly startup.
+ensure_installed python
 
 # ─── Use the boot-active VT so Ly paints without a switch ────────────────────
 TTY_NUM=1
@@ -39,8 +41,21 @@ sudo systemctl mask "$GETTY_UNIT" 2>/dev/null || true
 sudo systemctl enable "$LY_UNIT"
 ok "Ly enabled on tty${TTY_NUM} — starts on next boot"
 
+# startup.sh runs as root with no user HOME; give it the canonical Cozy path.
+sudo mkdir -p /etc/systemd/system/ly@.service.d
+sudo tee /etc/systemd/system/ly@.service.d/cozy-env.conf >/dev/null <<EOF
+[Service]
+Environment=COZY_PATH=$COZY_DIR
+EOF
+sudo systemctl daemon-reload
+ok "Ly service environment configured (COZY_PATH=$COZY_DIR)"
+
 # ─── Deploy Catppuccin Mocha theme ───────────────────────────────────────────
 LY_THEME_DIR="$COZY_DIR/default/ly"
+if [[ -x $LY_THEME_DIR/generate-rain.py ]]; then
+    python3 "$LY_THEME_DIR/generate-rain.py" "$LY_THEME_DIR/rain.dur" 240 67 >/dev/null \
+        || warn "rain generation failed; keeping existing rain.dur"
+fi
 if [[ -f $LY_THEME_DIR/config.ini && -f $LY_THEME_DIR/startup.sh && -f $LY_THEME_DIR/rain.dur ]]; then
     for theme_file in config.ini startup.sh rain.dur; do
         target="/etc/ly/$theme_file"

@@ -160,26 +160,19 @@ if [[ -f "$INSTALL_DIR/login/agents.sh" ]]; then
 fi
 
 # ── Boot stack (Limine + Plymouth) ────────────────────────────────────────────
-if command -v limine-entry-tool &>/dev/null; then
-    section "Syncing boot entries"
-    msg "Regenerating Limine entries..."
-    if sudo limine-entry-tool 2>&1 | tail -5; then
-        ok "Limine entries synced"
-        echo " BOOT: Limine entries synced" >> "$REPORT_FILE"
+section "Syncing boot config"
+run_step "login/limine.sh" "Limine bootloader config"
+
+# Rebuild UKIs if hook package present (applies new mkinitcpio hooks / cmdline).
+# limine-entry-tool has no regenerate-all mode; limine-mkinitcpio creates entries.
+if command -v limine-mkinitcpio &>/dev/null; then
+    msg "Rebuilding UKIs (limine-mkinitcpio)..."
+    if sudo limine-mkinitcpio 2>&1 | tail -10; then
+        ok "UKIs rebuilt"
+        echo " BOOT: UKIs rebuilt" >> "$REPORT_FILE"
     else
-        warn "limine-entry-tool failed"
-        echo " BOOT: limine-entry-tool failed" >> "$REPORT_FILE"
-    fi
-    # Rebuild UKIs if hook package present (applies new mkinitcpio hooks / cmdline)
-    if command -v limine-mkinitcpio &>/dev/null; then
-        msg "Rebuilding UKIs (limine-mkinitcpio)..."
-        if sudo limine-mkinitcpio 2>&1 | tail -10; then
-            ok "UKIs rebuilt"
-            echo " BOOT: UKIs rebuilt" >> "$REPORT_FILE"
-        else
-            warn "limine-mkinitcpio failed"
-            echo " BOOT: limine-mkinitcpio failed" >> "$REPORT_FILE"
-        fi
+        warn "limine-mkinitcpio failed"
+        echo " BOOT: limine-mkinitcpio failed" >> "$REPORT_FILE"
     fi
 fi
 
