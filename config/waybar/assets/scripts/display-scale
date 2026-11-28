@@ -122,7 +122,7 @@ Scroll up/down: change scale
 Left click: scale menu"
 
     jq -nc \
-        --arg text "$ICON ${pct}%" \
+        --arg text "$ICON" \
         --arg tooltip "$tooltip" \
         '{text: $text, tooltip: $tooltip, class: "display-scale"}'
 }

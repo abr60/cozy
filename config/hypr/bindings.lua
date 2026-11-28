@@ -33,6 +33,7 @@ a.bind("SUPER + CTRL + V", "Clipboard history", "walker-launch -m clipboard")
 
 -- === Special Keys ===
 a.bind("XF86NotificationCenter", "WhatsApp", { webapp = "https://web.whatsapp.com/", focus = true })
+a.bind("XF86HangupPhone", "Toggle dark/light mode", "cozy-toggle-mode") -- F11 without Fn (Fn Lock off)
 
 -- === Hardware ===
 a.bind("SUPER + M", "Comic (Latin)", "cozy-comic-translate lat")

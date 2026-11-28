@@ -15,7 +15,7 @@
     },
 
     "on-click": "playerctl play-pause",
-    "on-click-right": "timeout 60s kitty --class kitty --title rmpc -e rmpc",
+    "on-click-right": "timeout 60s foot --title=rmpc -e rmpc",
     "on-scroll-up": "playerctl next",
     "on-scroll-down": "playerctl previous",
 

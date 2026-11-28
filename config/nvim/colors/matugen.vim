@@ -11,84 +11,84 @@ let g:colors_name = "matugen"
 set background=dark
 
 
-hi Normal guifg=#e3e3da guibg=#12140f
-hi NormalNC guifg=#e3e3da guibg=#12140f
-hi NonText guifg=#8f9283
-hi EndOfBuffer guifg=#12140f
+hi Normal guifg=#f1dfd6 guibg=#1a110c
+hi NormalNC guifg=#f1dfd6 guibg=#1a110c
+hi NonText guifg=#a48c7f
+hi EndOfBuffer guifg=#1a110c
 
-hi Comment guifg=#c5c8b8 gui=italic
-hi Delimiter guifg=#c5c8b8
-hi Operator guifg=#c5c8b8
-hi Todo guifg=#91d5ac guibg=None gui=bold
+hi Comment guifg=#dcc1b3 gui=italic
+hi Delimiter guifg=#dcc1b3
+hi Operator guifg=#dcc1b3
+hi Todo guifg=#c9cc61 guibg=None gui=bold
 
-hi Identifier guifg=#e3e3da
-hi Constant guifg=#91d5ac
-hi Number guifg=#91d5ac
-hi Boolean guifg=#91d5ac
-hi Type guifg=#91d5ac
-hi String guifg=#bfcba5
-hi Special guifg=#b4d181
-hi PreProc guifg=#b4d181
-hi Function guifg=#b4d181
-hi Statement guifg=#bfcba5
-hi Keyword guifg=#bfcba5
+hi Identifier guifg=#f1dfd6
+hi Constant guifg=#c9cc61
+hi Number guifg=#c9cc61
+hi Boolean guifg=#c9cc61
+hi Type guifg=#c9cc61
+hi String guifg=#f7b995
+hi Special guifg=#ffb68a
+hi PreProc guifg=#ffb68a
+hi Function guifg=#ffb68a
+hi Statement guifg=#f7b995
+hi Keyword guifg=#f7b995
 
 hi Error guibg=#93000a guifg=#ffdad6
 hi ErrorMsg guifg=#ffb4ab
-hi WarningMsg guifg=#91d5ac
+hi WarningMsg guifg=#c9cc61
 
-hi StatusLine guibg=#b4d181 guifg=#243600
-hi StatusLineNC guibg=#292b25 guifg=#c5c8b8
-hi VertSplit guifg=#45483c guibg=#12140f
-hi WinSeparator guifg=#45483c guibg=#12140f
+hi StatusLine guibg=#ffb68a guifg=#522300
+hi StatusLineNC guibg=#322822 guifg=#dcc1b3
+hi VertSplit guifg=#554338 guibg=#1a110c
+hi WinSeparator guifg=#554338 guibg=#1a110c
 
-hi Visual guibg=#454f32 guifg=#e1edc5
-hi Selection guibg=#454f32 guifg=#e1edc5
-hi Search guibg=#004f30 guifg=#a6ebc1
-hi IncSearch guibg=#b4d181 guifg=#243600
-hi MatchParen guibg=#004f30 guifg=#a6ebc1 gui=bold
+hi Visual guibg=#673c20 guifg=#ffd8c3
+hi Selection guibg=#673c20 guifg=#ffd8c3
+hi Search guibg=#686b00 guifg=#ffffff
+hi IncSearch guibg=#ffb68a guifg=#522300
+hi MatchParen guibg=#686b00 guifg=#ffffff gui=bold
 
-hi LineNr guifg=#c5c8b8 guibg=#1b1c17
-hi CursorLineNr guifg=#b4d181 gui=bold
-hi CursorLine guibg=#1f201b
-hi CursorColumn guibg=#1f201b
-hi Cursor guibg=#b4d181 guifg=#243600
-hi ColorColumn guibg=#1b1c17
-hi SignColumn guibg=#12140f
-hi Folded guibg=#1f201b guifg=#c5c8b8
-hi FoldColumn guibg=#12140f guifg=#c5c8b8
+hi LineNr guifg=#dcc1b3 guibg=#231a14
+hi CursorLineNr guifg=#ffb68a gui=bold
+hi CursorLine guibg=#271e18
+hi CursorColumn guibg=#271e18
+hi Cursor guibg=#ffb68a guifg=#522300
+hi ColorColumn guibg=#231a14
+hi SignColumn guibg=#1a110c
+hi Folded guibg=#271e18 guifg=#dcc1b3
+hi FoldColumn guibg=#1a110c guifg=#dcc1b3
 
-hi Pmenu guibg=#292b25 guifg=#e3e3da
-hi PmenuSel guibg=#454f32 guifg=#e1edc5
-hi PmenuSbar guibg=#34352f
-hi PmenuThumb guibg=#b4d181
+hi Pmenu guibg=#322822 guifg=#f1dfd6
+hi PmenuSel guibg=#673c20 guifg=#ffd8c3
+hi PmenuSbar guibg=#3e322c
+hi PmenuThumb guibg=#ffb68a
 
-hi TabLine guibg=#1f201b guifg=#c5c8b8
-hi TabLineSel guibg=#b4d181 guifg=#243600
-hi TabLineFill guibg=#1f201b
+hi TabLine guibg=#271e18 guifg=#dcc1b3
+hi TabLineSel guibg=#ffb68a guifg=#522300
+hi TabLineFill guibg=#271e18
 
-hi Directory guifg=#b4d181
-hi Title guifg=#b4d181 gui=bold
+hi Directory guifg=#ffb68a
+hi Title guifg=#ffb68a gui=bold
 
-hi DiffAdd guibg=#354b09 guifg=#c9e694
-hi DiffChange guibg=#004f30 guifg=#a6ebc1
+hi DiffAdd guibg=#a64e01 guifg=#ffffff
+hi DiffChange guibg=#686b00 guifg=#ffffff
 hi DiffDelete guibg=#93000a guifg=#ffdad6
-hi DiffText guibg=#b4d181 guifg=#243600
+hi DiffText guibg=#ffb68a guifg=#522300
 
 hi DiagnosticError guifg=#ffb4ab
-hi DiagnosticWarn guifg=#91d5ac
-hi DiagnosticInfo guifg=#bfcba5
-hi DiagnosticHint guifg=#c5c8b8
+hi DiagnosticWarn guifg=#c9cc61
+hi DiagnosticInfo guifg=#f7b995
+hi DiagnosticHint guifg=#dcc1b3
 hi DiagnosticUnderlineError guisp=#ffb4ab gui=undercurl
-hi DiagnosticUnderlineWarn guisp=#91d5ac gui=undercurl
-hi DiagnosticUnderlineInfo guisp=#bfcba5 gui=undercurl
-hi DiagnosticUnderlineHint guisp=#c5c8b8 gui=undercurl
+hi DiagnosticUnderlineWarn guisp=#c9cc61 gui=undercurl
+hi DiagnosticUnderlineInfo guisp=#f7b995 gui=undercurl
+hi DiagnosticUnderlineHint guisp=#dcc1b3 gui=undercurl
 
 hi SpellBad guisp=#ffb4ab gui=undercurl
-hi SpellCap guisp=#91d5ac gui=undercurl
-hi SpellLocal guisp=#bfcba5 gui=undercurl
-hi SpellRare guisp=#b4d181 gui=undercurl
+hi SpellCap guisp=#c9cc61 gui=undercurl
+hi SpellLocal guisp=#f7b995 gui=undercurl
+hi SpellRare guisp=#ffb68a gui=undercurl
 
-hi Added guifg=#b4d181
-hi Changed guifg=#91d5ac
+hi Added guifg=#ffb68a
+hi Changed guifg=#c9cc61
 hi Removed guifg=#ffb4ab

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Toggle between Cozy's dark and light appearance modes.
+
+set -uo pipefail
+
+STATE_DIR="$HOME/.local/state/Cozy"
+MODE_FILE="$STATE_DIR/current-mode"
+SCRIPTS_DIR="$HOME/.config/matugen/bin"
+
+CURRENT_MODE=$(cat "$MODE_FILE" 2>/dev/null || echo "dark")
+if [[ "$CURRENT_MODE" == "light" ]]; then
+    NEW_MODE="dark"
+else
+    NEW_MODE="light"
+fi
+
+"$SCRIPTS_DIR/cozy-set-mode" "$NEW_MODE" || exit $?
+notify-send -u low "Cozy" "Switched to ${NEW_MODE} mode" 2>/dev/null || true
