@@ -1,6 +1,6 @@
 # Cozy Menu (Walker)
 
-Cozy's menu is `bin/menu` (Walker dmenu). `bin/menu` is a symlink to `bin/libexec/cozy/desktop/menu`. Dispatcher is `bin/cozy` (routes `cozy <group> <action>` → `bin/cozy-*` / `bin/cozy-*`).
+Cozy's menu is `bin/menu` (Walker dmenu). `bin/menu` is a symlink to `bin/libexec/cozy/desktop/menu`. Dispatcher is `bin/cozy` (routes `cozy <group> <action>` → `bin/cozy-*`).
 
 ```
 bin/menu

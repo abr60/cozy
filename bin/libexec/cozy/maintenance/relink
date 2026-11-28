@@ -49,31 +49,10 @@ if [[ -e "$WALL_LINK" ]]; then
     fi
 fi
 
-# Agent skill symlinks
-SKILLS_SRC="$COZY_PATH/default/agents/skills"
-if [[ -d "$SKILLS_SRC" ]]; then
-    target_dirs=(
-        "$HOME/.agents/skills"
-        "$HOME/.claude/skills"
-        "$HOME/.codex/skills"
-        "$HOME/.pi/agent/skills"
-        "$HOME/.gemini/config/skills"
-        "$HOME/.hermes/skills"
-        "$HOME/.config/opencode/skills"
-    )
-    for profile in "$HOME"/.hermes/profiles/*/; do
-        [[ -d "$profile" ]] && target_dirs+=("${profile%/}/skills")
-    done
-
-    for target in "${target_dirs[@]}"; do
-        mkdir -p "$target"
-        for skill in "$SKILLS_SRC"/*/; do
-            [[ -d "$skill" ]] || continue
-            name="$(basename "$skill")"
-            ln -sfn --relative "$skill" "$target/$name"
-        done
-    done
-    printf 'Relinked agent skills\n'
+# Agent skill symlinks (canonical linker owns the target list and cleanup)
+if [[ -x "$COZY_PATH/bin/cozy-agent-skills-link" ]]; then
+    COZY_SKILLS_SKIP_RELOAD=true "$COZY_PATH/bin/cozy-agent-skills-link" "$COZY_PATH" >/dev/null
+    printf 'Relinked agent skills from %s\n' "$COZY_PATH/default/agents/skills"
 fi
 
 printf 'Cozy symlinks are now relative to their install location.\n'

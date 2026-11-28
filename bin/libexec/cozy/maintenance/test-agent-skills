@@ -1,0 +1,120 @@
+#!/bin/bash
+
+# cozy:summary=Verify agent skill linking and SKILL.md authoring rules
+# cozy:group=test
+# cozy:name=agent-skills
+
+set -euo pipefail
+
+SCRIPT_PATH="$(readlink -f -- "${BASH_SOURCE[0]}")"
+REPO_ROOT="$(cd -- "$(dirname -- "$SCRIPT_PATH")/../../../.." && pwd -P)"
+LINKER="$REPO_ROOT/bin/libexec/cozy/agents/cozy-agent-skills-link"
+INSTRUCTIONS="$REPO_ROOT/bin/libexec/cozy/agents/cozy-agent-instructions"
+
+fake_home="$(mktemp -d)"
+root_a="$(mktemp -d)"
+root_b="$(mktemp -d)"
+trap 'rm -rf "$fake_home" "$root_a" "$root_b"' EXIT
+
+fail() {
+  printf 'FAIL: %s\n' "$*" >&2
+  exit 1
+}
+
+pass() {
+  printf 'ok - %s\n' "$*"
+}
+
+export HOME="$fake_home"
+export XDG_CONFIG_HOME="$fake_home/.config"
+export COZY_SKILLS_SKIP_RELOAD=true
+unset COZY_PATH COZY_DIR
+
+for name in alpha retired user-override; do
+  mkdir -p "$root_a/default/agents/skills/$name"
+done
+for name in alpha gamma user-override; do
+  mkdir -p "$root_b/default/agents/skills/$name"
+done
+
+mkdir -p "$HOME/.hermes/profiles/p1"
+mkdir -p "$HOME/.agents/skills/user-override"
+printf 'keep\n' >"$HOME/.agents/skills/user-override/note"
+mkdir -p "$fake_home/elsewhere/skill" "$HOME/.claude/skills"
+ln -s -- "$fake_home/elsewhere/skill" "$HOME/.claude/skills/theirs"
+
+dirs=(
+  "$HOME/.agents/skills"
+  "$HOME/.claude/skills"
+  "$HOME/.codex/skills"
+  "$HOME/.pi/agent/skills"
+  "$HOME/.gemini/config/skills"
+  "$HOME/.hermes/skills"
+  "$XDG_CONFIG_HOME/opencode/skills"
+  "$HOME/.hermes/profiles/p1/skills"
+)
+
+bash "$LINKER" "$root_a" >/dev/null
+
+for dir in "${dirs[@]}"; do
+  [[ -L "$dir/alpha" ]] || fail "missing link: $dir/alpha"
+  [[ -L "$dir/retired" ]] || fail "missing link: $dir/retired"
+  [[ $(readlink "$dir/alpha") != /* ]] || fail "non-relative link: $dir/alpha"
+  [[ $(realpath -m "$dir/alpha") == "$root_a/default/agents/skills/alpha" ]] ||
+    fail "wrong link target: $dir/alpha"
+done
+pass "fresh link reaches every harness and Hermes profile with relative targets"
+
+[[ -d "$HOME/.agents/skills/user-override" && ! -L "$HOME/.agents/skills/user-override" ]] ||
+  fail "a user-owned folder was replaced"
+[[ $(<"$HOME/.agents/skills/user-override/note") == keep ]] ||
+  fail "a user-owned folder was modified"
+[[ ! -e "$HOME/.agents/skills/user-override/user-override" ]] ||
+  fail "a nested link was created inside a user-owned folder"
+[[ $(readlink "$HOME/.claude/skills/theirs") == "$fake_home/elsewhere/skill" ]] ||
+  fail "a user-owned skill link was replaced"
+pass "user-owned folders and links win"
+
+bash "$LINKER" "$root_b" >/dev/null
+
+for dir in "${dirs[@]}"; do
+  [[ -L "$dir/alpha" ]] || fail "missing link after relink: $dir/alpha"
+  [[ $(realpath -m "$dir/alpha") == "$root_b/default/agents/skills/alpha" ]] ||
+    fail "alpha was not repointed to the active tree: $dir/alpha"
+  [[ -L "$dir/gamma" ]] || fail "new skill was not linked: $dir/gamma"
+  [[ ! -e "$dir/retired" && ! -L "$dir/retired" ]] ||
+    fail "stale own-link was not removed: $dir/retired"
+done
+[[ -d "$HOME/.agents/skills/user-override" && ! -L "$HOME/.agents/skills/user-override" ]] ||
+  fail "relink replaced a user-owned folder"
+[[ $(readlink "$HOME/.claude/skills/theirs") == "$fake_home/elsewhere/skill" ]] ||
+  fail "relink replaced a user-owned link"
+pass "relink repoints own-links, adds new skills, drops retired ones"
+
+mkdir -p "$HOME/.claude" "$HOME/.pi/agent"
+printf 'My own rule\n' >"$HOME/.pi/agent/AGENTS.md"
+bash "$INSTRUCTIONS" >/dev/null
+
+[[ -f $HOME/.agents/AGENTS.md ]] || fail "canonical instructions file was not created"
+grep -Fq 'My own rule' "$HOME/.agents/AGENTS.md" || fail "existing instructions were not adopted"
+[[ -L $HOME/.claude/CLAUDE.md ]] || fail "Claude instructions were not linked"
+[[ $(readlink "$HOME/.claude/CLAUDE.md") != /* ]] || fail "instructions link is absolute: $HOME/.claude/CLAUDE.md"
+[[ $(realpath -m "$HOME/.claude/CLAUDE.md") == "$HOME/.agents/AGENTS.md" ]] ||
+  fail "instructions link points at the wrong file"
+[[ ! -d $HOME/.grok ]] || fail "an absent harness directory was created"
+
+bash "$INSTRUCTIONS" grok >/dev/null
+[[ -L $HOME/.grok/AGENTS.md ]] || fail "naming a harness did not link its instructions"
+pass "instructions are shared, relative, adopt existing rules, and respect absent harnesses"
+
+while IFS= read -r -d '' skill; do
+  expected=$(basename "$(dirname "$skill")")
+  name=$(awk '/^name:/ { print $2; exit }' "$skill")
+  [[ $name == "$expected" ]] || fail "name '$name' in $skill does not match '$expected'"
+
+  description=$(awk '/^description:/ { found = 1; next } /^---/ { if (found) exit } found' "$skill" |
+    sed 's/^ *//' | paste -sd ' ')
+  (( ${#description} > 0 && ${#description} <= 1024 )) ||
+    fail "${skill#"$REPO_ROOT"/} has a description of ${#description} characters; limit is 1-1024"
+done < <(find "$REPO_ROOT/default/agents/skills" -mindepth 2 -maxdepth 2 -name SKILL.md -print0)
+pass "every shipped SKILL.md has a matching name and a 1-1024 character description"

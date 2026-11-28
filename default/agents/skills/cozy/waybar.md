@@ -1,10 +1,10 @@
 # Waybar (Cozy)
 
-Waybar is Cozy's status bar (Cozy uses Waybar rather than Quickshell/cozy-shell).
+Waybar is Cozy's status bar.
 
 - Live config: `~/.config/waybar/config.jsonc` + `style.css`
 - Repo source: `$COZY_PATH/config/waybar/`
-- Reload: `restart-waybar` or `systemctl --user restart waybar` (or `cozy restart waybar` if wrapped)
-- Reset: `refresh-waybar`
+- Reload: `cozy restart waybar` (or `systemctl --user restart waybar`)
+- Reset: `cozy refresh waybar`
 
-Edit the repo, not the live `~/.config/` copy directly — `update.sh` overwrites it.
+Edit the repo source, not the live `~/.config/` copy — `update.sh` re-applies the repo version.

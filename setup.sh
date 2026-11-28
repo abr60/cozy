@@ -148,7 +148,7 @@ run_step "login/ly.sh"                    "Ly display manager"              fals
 run_step "login/limine.sh"                "Limine bootloader"               true
 run_step "login/plymouth.sh"              "Plymouth"                        true
 run_step "system/acpi-loglevel.sh"        "ACPI console log level"          false
-run_step "login/agents.sh"                "Agent skills"                    false
+run_step "login/agents.sh"                "Agent skills and instructions"    false
 
 # ==========================================
 # 7. DONE

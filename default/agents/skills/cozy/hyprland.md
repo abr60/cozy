@@ -1,6 +1,6 @@
 # Hyprland (Cozy)
 
-Cozy configures Hyprland in **Lua** (like Cozy). User files load after defaults.
+Cozy configures Hyprland in **Lua**. User files load after Cozy's defaults.
 
 ```
 ~/.config/hypr/
@@ -18,6 +18,6 @@ Cozy configures Hyprland in **Lua** (like Cozy). User files load after defaults.
 
 - Hyprland auto-reloads on save; force with `hyprctl reload`.
 - Validate after any Lua change: `hyprctl reload && hyprctl configerrors` — fix until clean.
-- Reset to Cozy defaults: `refresh-hyprland` (from `bin/refresh-hyprland`).
+- Reset to Cozy defaults: `cozy refresh hyprland` (source: `bin/libexec/cozy/maintenance/refresh-hyprland`).
 
 Repo source: `$COZY_PATH/config/hypr/` (stowed). Edit there, then `update.sh` or `install/config/dotfiles.sh` re-applies.

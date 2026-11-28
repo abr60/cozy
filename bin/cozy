@@ -27,6 +27,7 @@ declare -A BINARY_TO_KEY
 declare -A GROUP_DESCRIPTIONS
 
 GROUP_DESCRIPTIONS[ac]="AC power detection"
+GROUP_DESCRIPTIONS[agent]="Coding agents, skills, and instructions"
 GROUP_DESCRIPTIONS[battery]="Battery status helpers"
 GROUP_DESCRIPTIONS[branch]="Cozy git branch management"
 GROUP_DESCRIPTIONS[branding]="About branding"
@@ -65,7 +66,7 @@ GROUP_DESCRIPTIONS[snapshot]="System snapshots"
 GROUP_DESCRIPTIONS[sudo]="Sudo configuration helpers"
 GROUP_DESCRIPTIONS[swayosd]="SwayOSD status display helpers"
 GROUP_DESCRIPTIONS[system]="Reboot, shutdown, logout, and lock"
-GROUP_DESCRIPTIONS[test]="Path portability tests"
+GROUP_DESCRIPTIONS[test]="Portability and agent-skill tests"
 GROUP_DESCRIPTIONS[theme]="Theme management"
 GROUP_DESCRIPTIONS[toggle]="Toggle Cozy features"
 GROUP_DESCRIPTIONS[transcode]="Image and video transcoding"

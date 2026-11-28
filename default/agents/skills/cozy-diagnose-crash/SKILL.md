@@ -1,12 +1,12 @@
 ---
-name: diagnose-crash
+name: cozy-diagnose-crash
 description: >
   Diagnose why a program crashed on this machine, from a systemd-coredump core dump.
   Use when a process has segfaulted, aborted, or otherwise dumped core, when asked
   why an application crashed or disappeared, or when a "Process crashed:" desktop
   notification is acted on. Triggers: crash, segfault, SIGSEGV, SIGABRT, core dump,
   coredumpctl, "why did X crash", "X keeps crashing", backtrace symbolization.
-  Covers reporting a confirmed Cozy bug upstream — see reporting.md.
+  Reporting a confirmed Cozy bug upstream follows the cozy-contribute skill.
 ---
 
 # Diagnosing a Crash
@@ -93,5 +93,5 @@ above, which is a copy of the crashed process's memory.
 
 Most application crashes are upstream bugs in those applications, not Cozy's
 doing. In the minority of cases where the cause really does sit within Cozy's
-sphere of control, read [`reporting.md`](reporting.md) before offering to file
+sphere of control, follow the `cozy-contribute` skill before offering to file
 anything.

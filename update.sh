@@ -154,9 +154,9 @@ run_step "hardware/battery-low-hook.sh" "Low-battery hook"
 run_step "hardware/battery-saver.sh"    "Battery saver"
 run_step "hardware/keyboard-idle.sh"    "Keyboard idle"
 
-# ── Agent skills ──────────────────────────────────────────────────────────────
+# ── Agent skills and instructions ─────────────────────────────────────────────
 if [[ -f "$INSTALL_DIR/login/agents.sh" ]]; then
-    run_step "login/agents.sh" "Syncing agent skills"
+    run_step "login/agents.sh" "Syncing agent skills and instructions"
 fi
 
 # ── Boot stack (Limine + Plymouth) ────────────────────────────────────────────

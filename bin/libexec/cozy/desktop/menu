@@ -354,12 +354,15 @@ show_setup_menu() {
 }
 
 show_setup_agents_menu() {
-  case $(menu "Setup" "󱚤  Default Agent\n󰉉  Open default/agents\n  Edit cozy Skill\n󰈷  Diagnose Crash Skill\n  Relink Skills") in
+  local skills_dir="${COZY_PATH:-$HOME/.local/share/Cozy}/default/agents/skills"
+  case $(menu "Setup" "󱚤  Default Agent\n󰉉  Open default/agents\n  Edit cozy Skill\n󰈷  Diagnose Crash Skill\n󱁆  Contribute Skill\n  Edit Agent Instructions\n  Relink Skills") in
   *Default*) present_terminal "cozy-default-agent --pick 2>/dev/null || cozy-default-agent --pick 2>/dev/null || cozy-default-agent" ;;
-  *Open*) terminal bash -c 'ls -R ~/.local/share/Cozy/default/agents 2>/dev/null | head -40; echo "---"; echo "Press enter to open in editor"; read; launch-editor ~/.local/share/Cozy/default/agents' ;;
-  *cozy*) open_in_editor "$HOME/.local/share/Cozy/default/agents/skills/cozy/SKILL.md" ;;
-  *Diagnose*) open_in_editor "$HOME/.local/share/Cozy/default/agents/skills/diagnose-crash/SKILL.md" ;;
-  *Relink*) present_terminal "$HOME/.local/share/Cozy/install/login/agents.sh" ;;
+  *Open*) terminal bash -c 'ls -R "${COZY_PATH:-$HOME/.local/share/Cozy}/default/agents" 2>/dev/null | head -40; echo "---"; echo "Press enter to open in editor"; read; launch-editor "${COZY_PATH:-$HOME/.local/share/Cozy}/default/agents"' ;;
+  *cozy*) open_in_editor "$skills_dir/cozy/SKILL.md" ;;
+  *Diagnose*) open_in_editor "$skills_dir/cozy-diagnose-crash/SKILL.md" ;;
+  *Contribute*) open_in_editor "$skills_dir/cozy-contribute/SKILL.md" ;;
+  *Instructions*) present_terminal "cozy agent instructions --edit" ;;
+  *Relink*) present_terminal "cozy agent skills link" ;;
   *) show_setup_menu ;;
   esac
 }

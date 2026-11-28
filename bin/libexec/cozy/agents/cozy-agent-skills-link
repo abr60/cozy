@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# cozy:summary=Link Cozy's agent skills into every agent harness
+# cozy:args=[cozy-root]
+# cozy:name=skills link
+# cozy:group=agent
+# cozy:examples=cozy agent skills link | cozy agent skills link "$COZY_PATH"
+
+# Each harness reads skills from a directory of its own, so every skill Cozy
+# ships is linked into each of them, from one Cozy tree: the install, or a
+# checkout pointed at by $COZY_PATH. A link into another Cozy tree is moved to
+# this one, or removed when this tree has no such skill. Links to skills from
+# anywhere else are the user's, and stay.
+
+set -euo pipefail
+
+root=${1:-${COZY_PATH:-${COZY_DIR:-$HOME/.local/share/Cozy}}}
+skills="$root/default/agents/skills"
+if [[ ! -d $skills ]]; then
+  echo "No agent skills in $root" >&2
+  exit 1
+fi
+root="$(cd -- "$root" && pwd -P)"
+skills="$root/default/agents/skills"
+
+config="${XDG_CONFIG_HOME:-$HOME/.config}"
+dirs=(
+  "$HOME/.agents/skills"
+  "$HOME/.claude/skills"
+  "$HOME/.codex/skills"
+  "$HOME/.pi/agent/skills"
+  "$HOME/.gemini/config/skills"
+  "$HOME/.hermes/skills"
+  "$config/opencode/skills"
+)
+for profile in "$HOME"/.hermes/profiles/*/; do
+  [[ -d $profile ]] && dirs+=("${profile%/}/skills")
+done
+
+resolve() {
+  realpath -m -- "$1"
+}
+
+# A link is ours only when it resolves into a default/agents/skills tree.
+# Cozy writes relative links, so readlink alone is not enough for this test.
+is_managed() {
+  local link=$1 resolved
+  [[ -L $link ]] || return 1
+  resolved=$(resolve "$link") || return 1
+  [[ $resolved == */default/agents/skills/* ]]
+}
+
+changed=false
+
+for dir in "${dirs[@]}"; do
+  mkdir -p "$dir"
+
+  # Drop own-links to skills that no longer exist in the active tree.
+  for link in "$dir"/*; do
+    [[ -e $link || -L $link ]] || continue
+    is_managed "$link" || continue
+    [[ -d "$skills/${link##*/}" ]] || {
+      rm -- "$link"
+      printf 'Removed stale skill link %s\n' "$link"
+      changed=true
+    }
+  done
+
+  pending=()
+  for skill in "$skills"/*/; do
+    [[ -d $skill ]] || continue
+    skill=${skill%/}
+    link="$dir/${skill##*/}"
+
+    # A folder or a link of the user's own by the same name wins.
+    if [[ -e $link || -L $link ]]; then
+      is_managed "$link" || continue
+      [[ $(resolve "$link") == "$(resolve "$skill")" ]] && continue
+    fi
+    pending+=("$skill")
+  done
+
+  for skill in "${pending[@]}"; do
+    link="$dir/${skill##*/}"
+    ln -sfn --relative -- "$skill" "$link"
+    printf 'Linked %s -> %s\n' "$link" "$(readlink "$link")"
+    changed=true
+  done
+done
+
+if [[ $changed == true && ${COZY_SKILLS_SKIP_RELOAD:-false} != true ]]; then
+  if command -v restart-opencode >/dev/null 2>&1; then
+    restart-opencode >/dev/null 2>&1 || true
+  elif pgrep -x opencode >/dev/null 2>&1; then
+    killall -SIGUSR2 opencode >/dev/null 2>&1 || true
+  fi
+fi
